@@ -1,0 +1,57 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.so.*
+*.dll
+*.dylib
+
+# Executables
+dophot
+dophot.exe
+*.out
+
+# Editor backups
+*~
+*.swp
+*.swo
+*.swn
+.DS_Store
+*.orig
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+
+# Build directories
+build/
+dist/
+*.egg-info/
+__pycache__/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg
+
+# OS
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.log
+.*.swp
+
+# Test artifacts
+*.fits
+*.fits~
+test_output/
