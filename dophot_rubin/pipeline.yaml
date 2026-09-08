@@ -1,0 +1,69 @@
+# DoPHOT Pipeline Configuration for Rubin Observatory
+#
+# This pipeline defines the DoPHOT photometry task for integration
+# into the LSST data processing pipeline.
+#
+# Usage: $ pipetask run -p dophot_rubin/pipeline.yaml ...
+
+description: |
+  DoPHOT Photometry Pipeline
+
+  Performs PSF-based photometry on calibrated visit images using DoPHOT.
+
+  Workflow:
+  1. PSF Measurement: Detect bright stars and measure PSF width
+  2. Parameter Generation: Auto-tune DoPHOT parameters from PSF
+  3. Photometry: Execute DoPHOT C code for precise PSF photometry
+  4. Postprocessing: Apply WCS, magnitude calibration, quality flags
+
+tasks:
+  dophot:
+    class: dophot_rubin.DoPHOTTask
+    doc: |
+      Execute DoPHOT PSF-based photometry.
+
+      Inputs:
+        - calexp: Calibrated exposure (DP2 format with IMAGE/MASK/VARIANCE)
+        - photoCalib: Photometric calibration
+        - psf: PSF model (optional)
+
+      Outputs:
+        - src: SourceCatalog with PSF photometry
+        - srcMetadata: Processing metadata
+
+    config:
+      # PSF Measurement
+      psfDetectionThreshold: 10.0
+      psfMinStars: 20
+      psfBoxSize: 31
+      psfEdgeBuffer: 32
+
+      # DoPHOT Execution
+      doPHOTExecPath: "dophot"
+      useEmpiricalModel: true
+      psfModel: "PGAUSS"
+
+      # Postprocessing
+      doApertureCorrection: true
+      doWcsTransform: true
+      doMagnitudeConversion: true
+      apertureRadius: 2.0
+      apertureRadiusUnits: "arcsec"
+      minPsfSignalToNoise: 3.0
+
+      # Debug/Logging
+      doDebug: false
+      logLevel: "INFO"
+      doPHOTWorkDir: "/tmp/dophot_work"
+
+# Optional: Define required connections
+# (The task defines these via ConnectionsClass, but can be overridden here)
+#
+# connections:
+#   inputs:
+#     calexp: calexp
+#     photoCalib: calexp.photoCalib
+#     psf: calexp.psf
+#   outputs:
+#     src: dophot_src
+#     srcMetadata: dophot_srcMetadata

@@ -12,6 +12,7 @@ from pathlib import Path
 try:
     from lsst.pipe.base import PipelineTask, PipelineTaskConnections
     from lsst.pex.config import Config
+    from lsst.pipe.base import connectionTypes as cT
     HAS_RUBIN_STACK = True
 except ImportError:
     HAS_RUBIN_STACK = False
@@ -27,6 +28,17 @@ except ImportError:
     class Config:
         pass
 
+    # Mock connectionTypes for development
+    class MockConnectionTypes:
+        class Input:
+            def __init__(self, *args, **kwargs):
+                pass
+        class Output:
+            def __init__(self, *args, **kwargs):
+                pass
+
+    cT = MockConnectionTypes()
+
 from .config import DoPHOTConfig
 from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
 from .postprocess import DoPHOTPostprocessor
@@ -34,6 +46,53 @@ from .execute_dophot import DoPHOTExecutor
 
 
 logger = logging.getLogger(__name__)
+
+
+class DoPHOTInputConnections(PipelineTaskConnections):
+    """Input connections for DoPHOT task."""
+    if HAS_RUBIN_STACK:
+        calexp = cT.Input(
+            doc="Calibrated exposure from reprocessVisitImage (DP2 format)",
+            name="calexp",
+            storageClass="ExposureF",
+            dimensions=["visit", "detector"]
+        )
+        photoCalib = cT.Input(
+            doc="Photometric calibration",
+            name="calexp.photoCalib",
+            storageClass="PhotoCalib",
+            dimensions=["visit", "detector"]
+        )
+        psf = cT.Input(
+            doc="PSF model",
+            name="calexp.psf",
+            storageClass="PSF",
+            dimensions=["visit", "detector"],
+            optional=True
+        )
+
+
+class DoPHOTOutputConnections(PipelineTaskConnections):
+    """Output connections for DoPHOT task."""
+    if HAS_RUBIN_STACK:
+        src = cT.Output(
+            doc="SourceCatalog with DoPHOT photometry",
+            name="dophot_src",
+            storageClass="SourceCatalog",
+            dimensions=["visit", "detector"]
+        )
+        srcMetadata = cT.Output(
+            doc="Metadata about DoPHOT processing",
+            name="dophot_srcMetadata",
+            storageClass="PropertySet",
+            dimensions=["visit", "detector"],
+            optional=True
+        )
+
+
+class DoPHOTConnections(DoPHOTInputConnections, DoPHOTOutputConnections):
+    """Full connections for DoPHOT task."""
+    pass
 
 
 class DoPHOTTask(PipelineTask):
@@ -56,6 +115,9 @@ class DoPHOTTask(PipelineTask):
         src: SourceCatalog with DoPHOT photometry
         srcMetadata: Metadata about processing
     """
+
+    if HAS_RUBIN_STACK:
+        ConnectionsClass = DoPHOTConnections
 
     ConfigClass = DoPHOTConfig
     _DefaultName = "dophot"
@@ -168,7 +230,7 @@ class DoPHOTTask(PipelineTask):
         catalog : astropy.table.Table
             DoPHOT source catalog
         """
-        from ..dophot_preprocess import param_file_writer
+        from dophot_preprocess import param_file_writer
         from astropy.table import Table
 
         self.log.info("Running DoPHOT photometry")
@@ -194,7 +256,7 @@ class DoPHOTTask(PipelineTask):
 
                 # Need to write FITS image to temp file for DoPHOT
                 fits_file = tmpdir / "input.fits"
-                import fits  # Will use astropy.io.fits
+                from astropy.io import fits
                 fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
 
                 catalog = executor.run(
@@ -252,29 +314,3 @@ class DoPHOTTask(PipelineTask):
 
         self.log.info("✓ Postprocessing complete")
         return src
-
-
-class DoPHOTTaskWithConnections(PipelineTask):
-    """
-    DoPHOT task with full Rubin connections (requires lsst.pipe.base).
-
-    This is the version used when the full Rubin Stack is available.
-    It includes proper input/output connections following Rubin conventions.
-    """
-
-    if HAS_RUBIN_STACK:
-        # This would be properly decorated when Rubin Stack is available
-        pass
-
-    ConfigClass = DoPHOTConfig
-    _DefaultName = "dophotWithConnections"
-
-    # TODO: Define InputConnections and OutputConnections when Rubin Stack available
-
-
-def create_dophot_task():
-    """Factory function to create appropriate DoPHOT task."""
-    if HAS_RUBIN_STACK:
-        return DoPHOTTaskWithConnections
-    else:
-        return DoPHOTTask
