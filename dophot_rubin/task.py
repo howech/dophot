@@ -28,6 +28,9 @@ except ImportError:
         pass
 
 from .config import DoPHOTConfig
+from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
+from .postprocess import DoPHOTPostprocessor
+from .execute_dophot import DoPHOTExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -128,47 +131,26 @@ class DoPHOTTask(PipelineTask):
         params : dict
             DoPHOT tuning parameters
         """
-        from ..dophot_preprocess import psf_measurement, parameter_generation
+        with PreprocessingContext(self.work_dir) as work_dir:
+            preprocessor = DoPHOTPreprocessor(self.config)
 
-        self.log.info("Starting preprocessing: PSF measurement")
+            # Extract image data
+            image = calexp.image.array
+            variance = calexp.variance.array if calexp.variance else None
+            mask = calexp.mask.array if calexp.mask else None
+            header = calexp.getMetadata()
 
-        # Extract image data
-        image = calexp.image.array
-        variance = calexp.variance.array
-        mask = calexp.mask.array
+            # Run preprocessing
+            sigma, params, metadata = preprocessor.run(
+                image=image,
+                variance=variance,
+                mask=mask,
+                header=header,
+                work_dir=work_dir
+            )
 
-        # Measure PSF
-        sigma, n_stars, success = psf_measurement.measure_psf_from_image(
-            image_path=None,  # Will pass image array directly
-            saturation=self.config.doPHOTWorkDir,
-            min_stars=self.config.psfMinStars,
-            verbose=self.config.doDebug
-        )
-
-        if not success or sigma is None:
-            raise RuntimeError(f"PSF measurement failed (n_stars={n_stars})")
-
-        self.log.info(f"PSF measured: sigma={sigma:.2f} pixels ({n_stars} stars)")
-
-        # Generate parameters
-        image_stats = {
-            'sky_value': float(image.mean()),  # Rough estimate
-            'gain': 1.0,  # Get from header
-            'rdnoise': 10.0,  # Get from header
-            'saturation': 60000,  # Get from header
-        }
-
-        params = parameter_generation.compute_dophot_parameters(
-            sigma=sigma,
-            gain=image_stats['gain'],
-            rdnoise=image_stats['rdnoise'],
-            sky_value=image_stats['sky_value'],
-            saturation=image_stats['saturation'],
-            verbose=self.config.doDebug
-        )
-
-        self.log.info("Parameter generation complete")
-        return sigma, params
+            self.log.info(f"✓ Preprocessing complete: sigma={sigma:.3f} pixels")
+            return sigma, params
 
     def _run_dophot(self, calexp, params):
         """
@@ -187,24 +169,47 @@ class DoPHOTTask(PipelineTask):
             DoPHOT source catalog
         """
         from ..dophot_preprocess import param_file_writer
+        from astropy.table import Table
 
         self.log.info("Running DoPHOT photometry")
 
         # Write temporary parameter file
         with tempfile.TemporaryDirectory(dir=self.work_dir) as tmpdir:
-            param_file = Path(tmpdir) / "dophot.param"
+            tmpdir = Path(tmpdir)
+            param_file = tmpdir / "dophot.param"
+
             param_file_writer.write_param_file(str(param_file), params, verbose=False)
+            self.log.debug(f"Parameter file: {param_file}")
+
+            # Check if DoPHOT executable exists
+            import shutil
+            if shutil.which(self.config.doPHOTExecPath) is None:
+                self.log.warning(f"DoPHOT executable not found: {self.config.doPHOTExecPath}")
+                self.log.warning("Returning empty catalog (DoPHOT not available)")
+                return Table()
 
             # Execute DoPHOT
-            # TODO: Implement C library call
-            self.log.info(f"DoPHOT parameter file: {param_file}")
+            try:
+                executor = DoPHOTExecutor(self.config)
 
-            # For now, return empty catalog (placeholder)
-            # In production, this will execute C DoPHOT and read output
-            from astropy.table import Table
-            catalog = Table()
+                # Need to write FITS image to temp file for DoPHOT
+                fits_file = tmpdir / "input.fits"
+                import fits  # Will use astropy.io.fits
+                fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
 
-        return catalog
+                catalog = executor.run(
+                    image_path=fits_file,
+                    param_file=param_file,
+                    output_dir=tmpdir
+                )
+
+                self.log.info(f"✓ DoPHOT complete: {len(catalog)} sources")
+                return catalog
+
+            except Exception as e:
+                self.log.error(f"DoPHOT execution failed: {e}")
+                # Return empty catalog on error
+                return Table()
 
     def _postprocessing(self, calexp, catalog, photoCalib):
         """
@@ -226,24 +231,26 @@ class DoPHOTTask(PipelineTask):
         src : lsst.afw.table.SourceCatalog
             Rubin SourceCatalog with photometry
         """
-        self.log.info("Starting postprocessing")
+        from .postprocess import create_source_catalog
 
-        # TODO: Implement postprocessing
-        # 1. WCS transformation
-        # 2. Aperture corrections
-        # 3. Magnitude conversion
-        # 4. Convert to SourceCatalog
+        postprocessor = DoPHOTPostprocessor(self.config)
 
-        self.log.info("Postprocessing complete")
+        # Run postprocessing
+        catalog_out = postprocessor.run(
+            catalog,
+            calexp=calexp,
+            psf=calexp.getPsf() if calexp else None,
+            photoCalib=photoCalib
+        )
 
-        # Placeholder: return empty SourceCatalog
+        # Convert to SourceCatalog
         if HAS_RUBIN_STACK:
-            from lsst.afw.table import SourceCatalog
-            src = SourceCatalog()
+            src = create_source_catalog(catalog_out, self.config)
         else:
             # Fallback for development
-            src = catalog
+            src = catalog_out
 
+        self.log.info("✓ Postprocessing complete")
         return src
 
 

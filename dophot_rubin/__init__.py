@@ -21,6 +21,9 @@ Usage:
 
 from .config import DoPHOTConfig, DoPHOTTaskConnections
 from .task import DoPHOTTask, create_dophot_task
+from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
+from .postprocess import DoPHOTPostprocessor, create_source_catalog
+from .execute_dophot import DoPHOTExecutor, execute_dophot
 
 __version__ = '0.1.0'
 __all__ = [
@@ -28,4 +31,10 @@ __all__ = [
     'DoPHOTTask',
     'DoPHOTTaskConnections',
     'create_dophot_task',
+    'DoPHOTPreprocessor',
+    'PreprocessingContext',
+    'DoPHOTPostprocessor',
+    'create_source_catalog',
+    'DoPHOTExecutor',
+    'execute_dophot',
 ]
