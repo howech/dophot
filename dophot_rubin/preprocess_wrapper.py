@@ -54,7 +54,7 @@ class DoPHOTPreprocessor:
         metadata : dict
             Processing metadata (n_stars, quality flags, etc.)
         """
-        from ..dophot_preprocess import psf_measurement, parameter_generation
+        from dophot_preprocess import psf_measurement, parameter_generation
 
         self.log.info("Starting preprocessing: PSF measurement and parameter generation")
 
@@ -166,7 +166,7 @@ class DoPHOTPreprocessor:
         success : bool
             Whether measurement succeeded
         """
-        from ..dophot_preprocess.psf_measurement import (
+        from dophot_preprocess.psf_measurement import (
             detect_bright_stars, measure_psf_sigma
         )
 
@@ -179,12 +179,21 @@ class DoPHOTPreprocessor:
 
         with tempfile.NamedTemporaryFile(suffix='.fits', delete=False) as tmp:
             fits_io.writeto(tmp.name, image, overwrite=True)
-            x, y, intensity = detect_bright_stars(
-                image,
-                threshold=threshold,
-                saturation=image_stats['saturation'],
-                n_stars=None
-            )
+            try:
+                x, y, intensity = detect_bright_stars(
+                    image,
+                    threshold=threshold,
+                    saturation=image_stats['saturation'],
+                    n_stars=None
+                )
+            except (TypeError, ValueError):
+                # No stars detected, return failure
+                self.log.debug(f"No bright stars detected (threshold={threshold:.1f} DN)")
+                return np.nan, 0, False
+
+        if x is None or len(x) == 0:
+            self.log.debug(f"No bright stars detected (threshold={threshold:.1f} DN)")
+            return np.nan, 0, False
 
         self.log.debug(f"Detected {len(x)} bright stars (threshold={threshold:.1f} DN)")
 
@@ -228,7 +237,7 @@ class DoPHOTPreprocessor:
         Path
             Path to written parameter file
         """
-        from ..dophot_preprocess import param_file_writer
+        from dophot_preprocess import param_file_writer
 
         if work_dir is None:
             work_dir = Path(self.config.doPHOTWorkDir)
