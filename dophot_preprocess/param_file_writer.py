@@ -58,8 +58,7 @@ def write_param_file(filename, params, base_param_file=None, verbose=True):
     lines.append("; === DoPHOT Parameter Overrides ===")
 
     # FWHM (tune1_)
-    gxwid = params['sigma']**2 * 100
-    lines.append(f"; PSF width (FWHM)")
+    lines.append("; PSF width (FWHM)")
     lines.append(f"FWHM = {params['fwhm']:.2f}")
     lines.append("")
 
@@ -77,7 +76,7 @@ def write_param_file(filename, params, base_param_file=None, verbose=True):
     lines.append("; Detection thresholds")
     lines.append(f"THRESHMIN = {params['thmin']:.2f}")
     lines.append(f"THRESHMAX = {params['thmax']:.2f}")
-    lines.append(f"THRESHDEC = 1.0")
+    lines.append("THRESHDEC = 1.0")
     lines.append(f"IBOT = {int(params['bottom'])}")
     lines.append(f"ITOP = {int(params['saturation'])}")
     lines.append("")

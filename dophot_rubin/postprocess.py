@@ -6,7 +6,6 @@ Handles aperture corrections, WCS transformation, and magnitude conversion.
 
 import logging
 import numpy as np
-from astropy.table import Table
 
 logger = logging.getLogger(__name__)
 

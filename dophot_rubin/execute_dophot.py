@@ -6,7 +6,6 @@ Handles calling the compiled DoPHOT C code with generated parameter files.
 
 import logging
 import subprocess
-import tempfile
 from pathlib import Path
 from astropy.io import ascii
 from astropy.table import Table
@@ -43,7 +42,8 @@ class DoPHOTExecutor:
             # Try to find in PATH
             import shutil
             if shutil.which(self.config.doPHOTExecPath) is None:
-                self.log.warning(f"DoPHOT executable not in PATH: {self.config.doPHOTExecPath}")
+                exec_name = self.config.doPHOTExecPath
+                self.log.warning(f"DoPHOT executable not in PATH: {exec_name}")
 
     def run(self, image_path, param_file, output_dir=None):
         """
@@ -100,7 +100,8 @@ class DoPHOTExecutor:
             )
 
             if result.returncode != 0:
-                self.log.error(f"DoPHOT execution failed with return code {result.returncode}")
+                msg = f"DoPHOT execution failed with return code {result.returncode}"
+                self.log.error(msg)
                 self.log.error(f"STDOUT: {result.stdout}")
                 self.log.error(f"STDERR: {result.stderr}")
                 raise RuntimeError(f"DoPHOT failed: {result.stderr}")

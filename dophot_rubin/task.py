@@ -5,7 +5,6 @@ Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 """
 
 import logging
-import os
 import tempfile
 from pathlib import Path
 
@@ -245,8 +244,9 @@ class DoPHOTTask(PipelineTask):
 
             # Check if DoPHOT executable exists
             import shutil
-            if shutil.which(self.config.doPHOTExecPath) is None:
-                self.log.warning(f"DoPHOT executable not found: {self.config.doPHOTExecPath}")
+            exec_path = self.config.doPHOTExecPath
+            if shutil.which(exec_path) is None:
+                self.log.warning(f"DoPHOT executable not found: {exec_path}")
                 self.log.warning("Returning empty catalog (DoPHOT not available)")
                 return Table()
 

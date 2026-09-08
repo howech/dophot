@@ -6,8 +6,6 @@ Adapted from IDL: getstars6.pro + fitpsfim_single.pro workflow.
 """
 
 import numpy as np
-from scipy.ndimage import gaussian_filter, label
-from scipy.optimize import curve_fit, minimize
 from astropy.io import fits
 from photutils.detection import find_peaks
 
@@ -173,11 +171,12 @@ def measure_psf_sigma(image, x, y, box_size=21, debug=False):
 
     if sigma <= 0.5 or sigma > box_size / 2:  # Unreasonable sigma
         if debug:
-            print(f"      FAIL: sigma out of range (0.5-{box_size/2:.1f}), got {sigma:.2f}")
+            max_sigma = box_size / 2
+            print(f"FAIL: sigma out of range (0.5-{max_sigma:.1f}), got {sigma:.2f}")
         return np.nan, np.nan, False
 
     if debug:
-        print(f"      SUCCESS")
+        print("SUCCESS")
 
     return sigma, amplitude, True
 
@@ -218,11 +217,9 @@ def measure_psf_from_image(image_path, saturation=None, min_stars=10, verbose=Tr
             # Try to get data from IMAGE extension (DP2 format) or PRIMARY
             if hdul[0].data is not None:
                 image = hdul[0].data.astype(float)
-                header = hdul[0].header
             elif len(hdul) > 1 and hdul[1].data is not None:
                 # DP2 format: data in IMAGE extension
                 image = hdul[1].data.astype(float)
-                header = hdul[1].header
             else:
                 raise ValueError("No image data found in FITS file")
     except Exception as e:
@@ -253,7 +250,9 @@ def measure_psf_from_image(image_path, saturation=None, min_stars=10, verbose=Tr
     debug_fails = {'center_drift': 0, 'bad_sigma': 0, 'fit_error': 0}
 
     for i, (xi, yi) in enumerate(zip(x, y)):
-        sigma, amp, success = measure_psf_sigma(image, xi, yi, box_size=31, debug=(i < 3))
+        sigma, amp, success = measure_psf_sigma(
+            image, xi, yi, box_size=31, debug=(i < 3)
+        )
         if success:
             sigmas.append(sigma)
             amplitudes.append(amp)

@@ -8,7 +8,6 @@ Compares with reference outputs in Testsuite/Verify/
 
 import sys
 import os
-import numpy as np
 from pathlib import Path
 
 # Add package to path
@@ -34,13 +33,12 @@ def test_psf_measurement(image_path, verbose=True):
     )
 
     if success:
-        print(f"\n✓ PSF measurement successful!")
+        print("\n✓ PSF measurement successful!")
         print(f"  Sigma: {sigma:.3f} pixels")
         print(f"  N_stars used: {n_stars}")
         return sigma, True
-    else:
-        print(f"\n✗ PSF measurement failed")
-        return None, False
+    print("\n✗ PSF measurement failed")
+    return None, False
 
 
 def test_parameter_generation(sigma, image_path, verbose=True):
@@ -127,7 +125,7 @@ def run_full_pipeline(image_path, output_dir=None, verbose=True):
     print("\n" + "="*60)
     print("✓ PIPELINE COMPLETE")
     print("="*60)
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Parameter file: {param_file}")
     print(f"  PSF sigma: {sigma:.3f} pixels")
 

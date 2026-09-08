@@ -54,9 +54,10 @@ class DoPHOTPreprocessor:
         metadata : dict
             Processing metadata (n_stars, quality flags, etc.)
         """
-        from dophot_preprocess import psf_measurement, parameter_generation
+        from dophot_preprocess import parameter_generation
 
-        self.log.info("Starting preprocessing: PSF measurement and parameter generation")
+        msg = "Starting preprocessing: PSF measurement + parameter generation"
+        self.log.info(msg)
 
         # Extract image statistics from header
         image_stats = self._extract_image_stats(header, image)
@@ -69,18 +70,25 @@ class DoPHOTPreprocessor:
         sigma, n_stars, success = self._measure_psf(image, image_stats)
 
         if not success or sigma is None:
-            raise RuntimeError(f"PSF measurement failed (n_stars={n_stars}, success={success})")
+            msg = f"PSF measurement failed (n_stars={n_stars}, success={success})"
+            raise RuntimeError(msg)
 
-        self.log.info(f"✓ PSF measured: sigma={sigma:.3f} pixels ({n_stars} stars used)")
+        msg = f"✓ PSF measured: sigma={sigma:.3f} pixels ({n_stars} stars used)"
+        self.log.info(msg)
 
         # Generate parameters
+        beta4_val = (
+            self.config.doPHOTWorkDir
+            if hasattr(self.config, 'psfBeta4')
+            else 1.0
+        )
         params = parameter_generation.compute_dophot_parameters(
             sigma=sigma,
             gain=image_stats['gain'],
             rdnoise=image_stats['rdnoise'],
             sky_value=image_stats['sky_value'],
             saturation=image_stats['saturation'],
-            beta4=self.config.doPHOTWorkDir if hasattr(self.config, 'psfBeta4') else 1.0,
+            beta4=beta4_val,
             verbose=self.config.doDebug
         )
 
@@ -125,9 +133,11 @@ class DoPHOTPreprocessor:
             # Handle different header formats
             if hasattr(header, 'get'):
                 # Rubin header or dict
-                stats['gain'] = float(header.get('GAINA', header.get('GAIN', 1.0)))
+                gain_val = header.get('GAINA', header.get('GAIN', 1.0))
+                stats['gain'] = float(gain_val)
                 stats['saturation'] = float(header.get('SATURATE', 60000))
-                stats['rdnoise'] = float(header.get('RDNOISEA', header.get('RDNOISE', 10.0)))
+                rdnoise_val = header.get('RDNOISEA', header.get('RDNOISE', 10.0))
+                stats['rdnoise'] = float(rdnoise_val)
             else:
                 # Fallback to defaults
                 stats['gain'] = 1.0
@@ -171,7 +181,10 @@ class DoPHOTPreprocessor:
         )
 
         # Detect bright stars
-        threshold = image_stats['sky_value'] + self.config.psfDetectionThreshold * image_stats['sky_rms']
+        threshold = (
+            image_stats['sky_value']
+            + self.config.psfDetectionThreshold * image_stats['sky_rms']
+        )
 
         # Create temp FITS file for detection (workaround for array-based detection)
         import tempfile
@@ -188,7 +201,8 @@ class DoPHOTPreprocessor:
                 )
             except (TypeError, ValueError):
                 # No stars detected, return failure
-                self.log.debug(f"No bright stars detected (threshold={threshold:.1f} DN)")
+                msg = f"No bright stars detected (threshold={threshold:.1f} DN)"
+                self.log.debug(msg)
                 return np.nan, 0, False
 
         if x is None or len(x) == 0:
@@ -215,7 +229,10 @@ class DoPHOTPreprocessor:
         self.log.debug(f"Successfully measured {n_stars} stars")
 
         if n_stars < self.config.psfMinStars:
-            self.log.warning(f"Only {n_stars} stars measured (need {self.config.psfMinStars})")
+            min_stars = self.config.psfMinStars
+            self.log.warning(
+                f"Only {n_stars} stars measured (need {min_stars})"
+            )
             return np.nan, n_stars, False
 
         sigma = float(np.median(sigmas))

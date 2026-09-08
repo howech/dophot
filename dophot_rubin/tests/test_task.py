@@ -3,7 +3,6 @@
 import unittest
 import tempfile
 from pathlib import Path
-import numpy as np
 
 from dophot_rubin.config import DoPHOTConfig
 from dophot_rubin.task import DoPHOTTask
@@ -32,11 +31,14 @@ class TestDoPHOTTask(unittest.TestCase):
         """Test that task has correct config."""
         task = DoPHOTTask(config=self.config)
         self.assertEqual(task.config.psfMinStars, self.config.psfMinStars)
-        self.assertEqual(task.config.doApertureCorrection, self.config.doApertureCorrection)
+        self.assertEqual(
+            task.config.doApertureCorrection,
+            self.config.doApertureCorrection
+        )
 
     def test_task_work_dir_creation(self):
         """Test that work directory is created."""
-        task = DoPHOTTask(config=self.config)
+        DoPHOTTask(config=self.config)
         work_dir = Path(self.config.doPHOTWorkDir)
         self.assertTrue(work_dir.exists())
 
@@ -45,7 +47,8 @@ class TestDoPHOTTask(unittest.TestCase):
         task = DoPHOTTask(config=self.config)
         self.assertIsNotNone(task.log)
         # Verify logger name contains 'task' or 'dophot'
-        self.assertTrue("task" in task.log.name.lower() or "dophot" in task.log.name.lower())
+        log_name = task.log.name.lower()
+        self.assertTrue("task" in log_name or "dophot" in log_name)
 
     def test_default_name(self):
         """Test that default name is set."""

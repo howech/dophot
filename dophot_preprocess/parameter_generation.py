@@ -119,7 +119,11 @@ def compute_dophot_parameters(sigma, gain, rdnoise, sky_value, saturation=None,
     thmax = saturation / 2.0
 
     # Bottom threshold (lower limit for pixel acceptance)
-    bottom = min(sky_value - 4.0 * nse_dn, sky_value - 1.5 * np.std(image_noise_estimate(sky_value, nse_dn)))
+    noise_est = image_noise_estimate(sky_value, nse_dn)
+    bottom = min(
+        sky_value - 4.0 * nse_dn,
+        sky_value - 1.5 * np.std(noise_est)
+    )
     bottom = max(-1000.0, bottom)  # Don't go too negative
 
     params = {
