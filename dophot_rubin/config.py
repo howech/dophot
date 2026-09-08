@@ -4,9 +4,12 @@ DoPHOT Configuration for Rubin Pipeline Task.
 Defines all configurable parameters for DoPHOT processing.
 """
 
+HAS_RUBIN_STACK = True
+
 try:
     from lsst.pex import config as pexConfig
 except ImportError:
+    HAS_RUBIN_STACK = False
     # Fallback for when Rubin Stack is not available
     class _ConfigClass:
         """Mock config class for development without Rubin Stack."""
@@ -26,17 +29,66 @@ except ImportError:
                     object.__setattr__(self, '_config', {})
                 self._config[name] = value
 
-    pexConfig = type('pexConfig', (), {
-        'Config': _ConfigClass,
-        'Field': lambda **kw: None,
-        'RangeField': lambda **kw: None,
-        'ChoiceField': lambda **kw: None,
-        'ConfigurableField': lambda **kw: None,
-    })()
+    class _MockField:
+        def __init__(self, **kw):
+            self.dtype = kw.get('dtype')
+            self.default = kw.get('default')
+            self.doc = kw.get('doc')
+
+    class _MockChoiceField(_MockField):
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            self.allowed = kw.get('allowed', {})
+
+    class _pexConfig:
+        Config = _ConfigClass
+        Field = _MockField
+        RangeField = _MockField
+        ChoiceField = _MockChoiceField
+        ConfigurableField = _MockField
+
+    pexConfig = _pexConfig()
 
 
-class DoPHOTConfig(pexConfig.Config):
-    """Configuration for DoPHOT photometry task."""
+if HAS_RUBIN_STACK:
+    class DoPHOTConfig(pexConfig.Config):
+        """Configuration for DoPHOT photometry task (Rubin Stack version)."""
+        pass
+else:
+    class DoPHOTConfig:
+        """Configuration for DoPHOT photometry task (mock version for development)."""
+        def __init__(self):
+            """Initialize with default values."""
+            # Set all default values
+            self.psfDetectionThreshold = 10.0
+            self.psfMinStars = 20
+            self.psfBoxSize = 31
+            self.psfEdgeBuffer = 32
+            self.doPHOTExecPath = "dophot"
+            self.doPHOTWorkDir = "/tmp/dophot_work"
+            self.useEmpiricalModel = True
+            self.psfModel = "PGAUSS"
+            self.skyEstimationMethod = "PERCENTILE"
+            self.maskBadPixels = True
+            self.useVarianceMap = True
+            self.doAperturePhotometry = True
+            self.apertureRadius = 2.0
+            self.doApertureCorrection = True
+            self.doWcsTransform = True
+            self.doMagnitudeConversion = True
+            self.minPsfSignalToNoise = 5.0
+            self.maxCentroidUncertainty = 1.0
+            self.minIterativeArea = 0.5
+            self.doDebug = False
+            self.saveIntermediateFiles = False
+            self.intermediateDir = "./dophot_intermediate"
+            self.logLevel = "INFO"
+
+
+# These are only added for Rubin Stack version
+if HAS_RUBIN_STACK:
+    class DoPHOTConfig(pexConfig.Config):
+        """Configuration for DoPHOT photometry task."""
 
     # ============================================================
     # PSF Measurement Parameters
