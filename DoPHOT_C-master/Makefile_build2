@@ -1,0 +1,38 @@
+# cfitsio source files, libraries, and flags
+# modify for your computer
+### prefix=/usr/local/bin
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+#cfitsio libraries and flags
+CFIOlibs = -L${libdir} -lcfitsio
+CFIOflags = -I${includedir}
+# end cfitsio modifications
+
+# directory of dophot source files, structs, and headers
+# modify for your directory structure as needed
+odir = ./
+
+#dophot libraries and flags
+DOPHflags =  -I${odir}structs -I${odir}headers 
+
+CC= gcc
+CFLAGS= -g -fno-inline -Wall ${DOPHflags} ${CFIOflags} 
+#CFLAGS= -g -fno-inline -fcommon -Wall ${DOPHflags} ${CFIOflags} 
+#CFLAGS= -O2 ${DOPHflags} ${CFIOflags} 
+LIBS= ${CFIOlibs} 
+# optimize with flag: -O2 if things compile and run nicely
+# debug flag: -Wall
+# Valgrind flag: -g -fno-inline
+# run: valgrind --dsymutil=yes --leak-check=full ./dophot
+
+Build2COBJECTS = $(odir)mini_mathlib.o $(odir)cast_arr.o \
+        $(odir)newfits.o $(odir)rfits.o \
+        $(odir)build2.o
+
+#	$(odir)sersic.o \
+
+build2: $(Build2COBJECTS)
+	     $(CC) $(Build2COBJECTS) \
+	     -o ./working_data/build2 $(CFLAGS) $(LIBS) -lm
