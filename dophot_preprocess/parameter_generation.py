@@ -251,8 +251,15 @@ def measure_image_statistics(image_path):
     from astropy.io import fits
 
     with fits.open(image_path) as hdul:
-        image = hdul[0].data.astype(float)
-        header = hdul[0].header
+        # Handle DP2 format (data in IMAGE extension) or standard FITS (PRIMARY)
+        if hdul[0].data is not None:
+            image = hdul[0].data.astype(float)
+            header = hdul[0].header
+        elif len(hdul) > 1 and hdul[1].data is not None:
+            image = hdul[1].data.astype(float)
+            header = hdul[1].header
+        else:
+            raise ValueError("No image data found in FITS file")
 
     # Estimate sky value (20th percentile, below noise)
     sky_value = np.percentile(image, 20)
