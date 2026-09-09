@@ -255,9 +255,32 @@ class DoPHOTTask(PipelineTask):
                 executor = DoPHOTExecutor(self.config)
 
                 # Need to write FITS image to temp file for DoPHOT
+                # Write full DP2 structure if variance/mask available
                 fits_file = tmpdir / "input.fits"
                 from astropy.io import fits
-                fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
+
+                # Create HDU list: PRIMARY + IMAGE + MASK + VARIANCE
+                hdul = fits.HDUList()
+
+                # PRIMARY HDU (empty, just header)
+                hdul.append(fits.PrimaryHDU())
+
+                # IMAGE extension
+                image_hdu = fits.ImageHDU(calexp.image.array.astype('float32'), name='IMAGE')
+                image_hdu.header['BUNIT'] = 'nJy'  # DP2 standard unit
+                hdul.append(image_hdu)
+
+                # MASK extension (if available)
+                if calexp.mask is not None:
+                    mask_hdu = fits.ImageHDU(calexp.mask.array.astype('uint32'), name='MASK')
+                    hdul.append(mask_hdu)
+
+                # VARIANCE extension (if available)
+                if calexp.variance is not None:
+                    var_hdu = fits.ImageHDU(calexp.variance.array.astype('float32'), name='VARIANCE')
+                    hdul.append(var_hdu)
+
+                hdul.writeto(str(fits_file), overwrite=True)
 
                 catalog = executor.run(
                     image_path=fits_file,
