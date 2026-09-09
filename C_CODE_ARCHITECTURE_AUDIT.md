@@ -450,20 +450,403 @@ hdul.writeto(str(fits_file), overwrite=True)
 
 ---
 
+---
+
+## ADDITIONAL REQUIREMENT: Unit System Support (DN vs. nanojansky)
+
+**Goal**: Enable DoPHOT to work with **both DN and nanojansky (nJy)** units
+
+### Current State: DN-Only
+
+All DoPHOT code assumes **Data Numbers (DN)** units:
+
+**readfits.c:**
+- Reads image as int (DN)
+- Returns `int** big`
+
+**makenoise.c:**
+- Computes noise in DN: `noise = image/gain + (rdnoise/gain)²`
+- Uses gain (electrons/DN) conversion
+
+**build.c and all fitting code:**
+- All thresholds in DN (tune3_.tmin, tune3_.tmax)
+- Sky subtraction in DN
+- Magnitude conversion assumes DN
+- Every fitting routine assumes DN-based photometry
+
+**build.c thresholds (DN-based):**
+```c
+search_.thresh = tune3_.tmin;      // Starting threshold in DN
+while (search_.thresh*powf(2, tune3_.tfac) <= tune3_.tmax){
+     // Threshold sweep in DN
+}
+```
+
+**Parameter file values (DN-based):**
+```
+THRESHMIN = 24.42  # DN
+THRESHMAX = 30000  # DN
+```
+
+### DP2 FITS Reality: Usually nanojansky
+
+**What Rubin LSST produces:**
+- IMAGE extension: flux-calibrated in **nanojansky (nJy)**
+- VARIANCE extension: variance in **nJy²**
+- No "gain" in traditional sense (calibrated to nJy)
+- No readout noise in DN (included in variance)
+
+**Example DP2 FITS values:**
+```
+IMAGE: 1000 nJy per pixel (not DN)
+VARIANCE: 100 nJy² (photon noise from calibration)
+```
+
+### The Problem
+
+Currently, if you pass DP2 FITS (nJy units) to DoPHOT:
+- C code interprets nJy values as DN
+- Thresholds are way wrong (1000 nJy interpreted as 1000 DN)
+- Noise calculation breaks (gain factor doesn't apply to nJy)
+- Magnitude calibration assumes DN → magnitude conversion
+
+**Example failure:**
+```
+Actual: 1000 nJy threshold
+Wrong:  DoPHOT reads as 1000 DN
+        Uses gain (e.g., 1.0 e/DN) incorrectly
+        Interprets small nJy values as noise
+        Detects nothing meaningful
+```
+
+---
+
+## Required Changes: Unit Awareness
+
+### 1. Detect Image Units from FITS Header
+
+**New Function: detect_image_units.c**
+
+```c
+enum ImageUnits {
+     UNIT_DN = 0,           // Data Numbers
+     UNIT_NJY = 1,          // nanojansky (Rubin DP2)
+};
+
+enum ImageUnits detect_image_units_(char* fits_file)
+{
+     fitsfile* fptr;
+     char unit_str[FLEN_VALUE];
+     int fio_err = 0;
+     
+     fits_open_file(&fptr, fits_file, 0, &fio_err);
+     
+     // DP2 FITS: IMAGE extension has BUNIT = 'nJy'
+     fits_movabs_hdu(fptr, 2, NULL, &fio_err);  // IMAGE extension
+     fits_read_key(fptr, TSTRING, "BUNIT", unit_str, NULL, &fio_err);
+     
+     fits_close_file(fptr, &fio_err);
+     
+     if (fio_err == 0){
+          if (strncmp(unit_str, "nJy", 3) == 0){
+               return UNIT_NJY;
+          }
+     }
+     
+     // Default: DN
+     return UNIT_DN;
+}
+```
+
+**Rubin DP2 FITS headers have:**
+```
+BUNIT   = 'nJy'         # Image units are nanojansky
+FLUXMAG0= 0.0           # Zero-point for magnitude conversion
+```
+
+---
+
+### 2. Modify readfits.c: Read as Float for nJy
+
+**Current:** Always returns `int** big` (DN)
+
+**Modified:** Return float array for nJy
+```c
+// Option A: Create new function for nJy
+float** readfits_nJy_(char* r_file, int* nx_ptr, int* ny_ptr)
+{
+     // Similar to readfits_ but:
+     // - Returns float** instead of int**
+     // - Reads as TFLOAT from cfitsio
+     // - No rescaling by gain
+}
+
+// Option B: Detect units and return appropriate type
+struct FitsData {
+     void* image;           // void* or int** or float**
+     enum ImageUnits units;
+     int nx, ny;
+};
+
+struct FitsData readfits_multiunit_(char* r_file)
+{
+     struct FitsData data;
+     data.units = detect_image_units_(r_file);
+     
+     if (data.units == UNIT_NJY){
+          data.image = (void*)readfits_nJy_(r_file, &data.nx, &data.ny);
+     } else {
+          data.image = (void*)readfits_(r_file, &data.nx, &data.ny);
+     }
+     return data;
+}
+```
+
+**Why separate function:**
+- nJy values are floats (can be < 1)
+- DN values are integers (counts)
+- Math operations differ between units
+
+---
+
+### 3. Modify makenoise.c: Unit-Aware Noise Calculation
+
+**Current:** Computes DN noise using gain
+
+**Modified:** Handle both units
+
+```c
+// For DN: use gain-based formula
+void makenoise_DN_(int** image, int** noise, int* ndx, int* ndy)
+{
+     float TEMP1 = (RNOISE/EPERDN)*(RNOISE/EPERDN);
+     float TEMP2 = 1.0f/EPERDN;
+     
+     for (I = 0; I < NSLOW; I++){
+          for (J = 0; J < NFAST; J++){
+               noise[I][J] = image[I][J]*TEMP2 + TEMP1;
+          }
+     }
+}
+
+// For nJy: use variance directly (no gain conversion)
+void makenoise_nJy_(float** variance, float** noise, int* ndx, int* ndy)
+{
+     // Variance already in nJy² from DP2 FITS
+     // Just take square root
+     for (I = 0; I < NSLOW; I++){
+          for (J = 0; J < NFAST; J++){
+               noise[I][J] = sqrtf(variance[I][J]);  // noise in nJy
+          }
+     }
+}
+```
+
+**Why different:**
+- DN: noise = sqrt(image*gain + readout_noise²) / gain
+- nJy: noise = sqrt(variance) [already in nJy²]
+
+---
+
+### 4. Modify build.c: Branch on Unit System
+
+**Current (DN only):**
+```c
+int** big = readfits_(files[0], &nx, &ny);
+int** noise = malloc_int_2darr(nslow, nfast);
+makenoise_(big, noise, &nfast, &nslow);
+```
+
+**Modified (unit-aware):**
+```c
+enum ImageUnits units = detect_image_units_(files[0]);
+
+if (units == UNIT_NJY){
+     // nJy path
+     float** image_nJy = readfits_nJy_(files[0], &nx, &ny);
+     float** variance = readfits_variance_(files[0], nx, ny);
+     float** noise_nJy = malloc_float_2darr(nslow, nfast);
+     
+     if (variance != NULL){
+          makenoise_nJy_(variance, noise_nJy, &nfast, &nslow);
+     } else {
+          // For nJy without variance, use simple estimate
+          estimate_noise_nJy_(image_nJy, noise_nJy, &nfast, &nslow);
+     }
+     
+     // Convert image/noise to void* pointers for generic processing
+     big_generic = (void*)image_nJy;
+     noise_generic = (void*)noise_nJy;
+     
+} else {
+     // DN path (existing code)
+     int** big = readfits_(files[0], &nx, &ny);
+     int** noise = malloc_int_2darr(nslow, nfast);
+     makenoise_(big, noise, &nfast, &nslow);
+}
+```
+
+---
+
+### 5. Modify Parameter Thresholds: Scale by Unit System
+
+**Current (hardcoded DN thresholds):**
+```c
+search_.thresh = tune3_.tmin;      // e.g., 24.42 DN
+```
+
+**Modified (unit-aware):**
+```c
+if (units == UNIT_NJy){
+     // Convert DN thresholds to nJy
+     // Example: 24.42 DN * (nJy/DN conversion) = nJy threshold
+     float dn_to_njy = get_photometric_calib_(files[0]);  // from FITS header
+     search_.thresh = tune3_.tmin * dn_to_njy;
+} else {
+     search_.thresh = tune3_.tmin;  // DN (unchanged)
+}
+```
+
+**How to get conversion factor from FITS:**
+```c
+float get_photometric_calib_(char* fits_file)
+{
+     // Rubin DP2 provides FLUXMAG0 (zero-point)
+     // FLUXMAG0 = magnitude with flux = 1 Jy
+     // Can derive DN→nJy conversion from photoCalib
+     
+     // Simplified: read from FITS header or config
+     // E.g., 1 DN = 1000 nJy (depends on exposure)
+     return 1000.0f;  // placeholder
+}
+```
+
+---
+
+### 6. Modify Magnitude Calculations: Unit-Aware Calibration
+
+**Current (DN-based):**
+```c
+// In postprocessing: convert DN to magnitudes
+mag = -2.5 * log10(flux_dn) + zeromag_dn;
+```
+
+**Modified (supports both):**
+```c
+if (units == UNIT_NJy){
+     // Direct nJy to AB magnitude conversion
+     // m_AB = -2.5 * log10(flux_nJy) - 23.9  (standard nJy zeropoint)
+     mag = -2.5 * log10(flux_nJy) - 23.9;
+} else {
+     // DN to magnitude using stored calibration
+     mag = -2.5 * log10(flux_dn) + zeromag_dn;
+}
+```
+
+---
+
+## Updated Implementation Roadmap
+
+### Phase 1: Variance Support (3-4 hours)
+- [ ] Modify readfits.c to accept hdu_num=4
+- [ ] Create readfits_variance.c
+- [ ] Update makenoise.c
+
+### Phase 2: Unit Detection & Support (4-6 hours)
+- [ ] Create detect_image_units.c
+- [ ] Create readfits_nJy_() for float image data
+- [ ] Create makenoise_nJy_() for nJy noise
+- [ ] Create estimate_noise_nJy_() for nJy without variance
+
+### Phase 3: Unit-Aware Pipeline (3-4 hours)
+- [ ] Modify build.c to branch on units
+- [ ] Update threshold calculations
+- [ ] Update parameter file generation
+- [ ] Handle generic processing (void* pointers or templating)
+
+### Phase 4: Calibration & Magnitude (2-3 hours)
+- [ ] Extract photometric calibration from FITS
+- [ ] Update magnitude calculations
+- [ ] Handle zero-point transformations
+
+### Phase 5: Testing (2-3 hours)
+- [ ] Test DN FITS (backward compat)
+- [ ] Test nJy FITS with variance
+- [ ] Test nJy FITS without variance
+- [ ] Compare photometry (DN vs nJy)
+
+**Total Effort**: ~14-20 hours
+
+---
+
+## Key Design Patterns
+
+### Pattern 1: Parallel Code Paths (Simplest)
+```
+if (units == UNIT_DN) {
+     // existing DN code
+} else {
+     // new nJy code
+}
+```
+**Pro:** Clear, easy to maintain
+**Con:** Code duplication
+
+### Pattern 2: Generic Processing (Flexible)
+```
+void* image = malloc based on units
+void* noise = malloc based on units
+process_generic(image, noise, units, ...)  // single function
+```
+**Pro:** Minimal duplication
+**Con:** Complex pointer arithmetic
+
+### Pattern 3: Template-Like (C doesn't support)
+Could use macros, but C templating is awkward.
+
+**Recommendation:** Pattern 1 (parallel paths) - clearer and safer for C code.
+
+---
+
+## Unit Conversion Summary
+
+| Aspect | DN | nanojansky |
+|--------|----|----|
+| **FITS BUNIT** | (missing) or 'count' | 'nJy' |
+| **Image type** | int (counts) | float (flux) |
+| **Typical values** | 100-60000 | 10-1000000 nJy |
+| **Noise formula** | sqrt(image/gain + rdnoise²) | sqrt(variance) |
+| **Variance** | Not in FITS | In VARIANCE extension (nJy²) |
+| **Zero-point** | Stored in param file | -23.9 (AB magnitude standard) |
+| **Calibration** | gain + readout_noise | photoCalib (from DP2 processing) |
+| **Threshold scale** | e.g., 24.42 DN | e.g., 50000 nJy |
+
+---
+
 ## Conclusion
 
-**What's blocking us**: C code architecture assumes single-extension FITS with computed noise
+**What's blocking us**: 
+1. C code assumes single-extension FITS with computed noise ← *variance issue*
+2. C code assumes DN units only ← **NEW: unit system issue**
 
 **What needs to change**:
-1. readfits.c: Accept multi-extension FITS
-2. New readfits_variance.c: Extract variance
-3. makenoise.c: Support variance-based calculation
-4. build.c: Coordinate reading and calculation
+1. readfits.c: Accept multi-extension FITS ✅
+2. readfits_variance.c: Extract VARIANCE extension ✅
+3. makenoise.c: Support both variance and unit-aware noise ✅
+4. detect_image_units.c: **NEW** - Determine DN vs nJy
+5. readfits_nJy.c: **NEW** - Read nJy as float
+6. build.c: **NEW** - Branch on units throughout pipeline
 
-**Benefit**: Use Rubin's pre-computed, error-propagated variance instead of simple noise model
+**Benefit**: 
+- Use Rubin's pre-computed, error-propagated variance ✅
+- Support both DN and nJy units ✅
+- Seamlessly work with DP2 FITS data ✅
 
-**Backward compatibility**: Full - existing single-extension files work unchanged
+**Backward compatibility**: 
+- Existing DN FITS works unchanged ✅
+- Existing single-extension files work unchanged ✅
+- New nJy DP2 FITS files work correctly ✅
 
-**Effort**: ~12-15 hours of C code modification
+**Total Effort**: ~14-20 hours (variance ~12-15h + units ~4-6h)
 
-**Priority**: HIGH - Required for production use with Rubin data
+**Priority**: CRITICAL - Without this, DP2 nJy data cannot be processed correctly
