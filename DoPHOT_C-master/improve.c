@@ -36,6 +36,7 @@
 #include "errupd.h"
 #include "impaper.h"
 #include "pgauss.h"
+#include "aperts.h"
 #include "improve.h"
 
 /* dophot int function converted to c int function 03-04-2012 */
