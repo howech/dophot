@@ -5,6 +5,44 @@
 
 ---
 
+## CRITICAL ISSUE: We Strip Data Before C Code Runs
+
+**The core problem:**
+
+```python
+# Step 1: Extract variance and mask from DP2 FITS
+variance = calexp.variance.array if calexp.variance else None
+mask = calexp.mask.array if calexp.mask else None
+
+# Step 2: Pass to Python preprocessing (unused)
+sigma, params, metadata = preprocessor.run(
+    image=image,
+    variance=variance,  # Loaded but ignored
+    mask=mask,          # Loaded but ignored
+    work_dir=work_dir
+)
+
+# Step 3: STRIP OUT variance and mask before C code!
+fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
+#            ^^ Only writing image, not variance or mask!
+
+# Step 4: Call C DoPHOT with degraded input
+catalog = executor.run(image_path=fits_file, param_file=param_file)
+#                                ^^^^^^^^^ No variance/mask in this file
+```
+
+**Result:** 
+- We load DP2 FITS (which has variance, mask, WCS)
+- We extract those data arrays in Python
+- We don't use them in Python
+- We create a simplified FITS file (image only)
+- We pass the simplified FITS to C code
+- **C code never sees the variance or mask data**
+
+This means even if C DoPHOT is designed to use variance weighting and mask rejection, **it can't because we stripped the data out**.
+
+---
+
 ## Summary: What We Do vs. Don't Do
 
 | Data | Extracted | Used | Status |
@@ -19,7 +57,7 @@
 
 ## Detailed Breakdown
 
-### 1. VARIANCE DATA ❌ (Completely Unused)
+### 1. VARIANCE DATA ❌ (STRIPPED OUT BEFORE C CODE)
 
 **What DP2 FITS provides:**
 ```
@@ -30,19 +68,38 @@ FITS structure:
   VARIANCE: 2D variance array (propagated from all processing steps)
 ```
 
-**What we extract:**
+**What we extract in Python:**
 ```python
 # task.py:200
 variance = calexp.variance.array if calexp.variance else None
 ```
 
-**What we actually do with it:**
+**What we actually pass to C code:**
 ```python
-# preprocess_wrapper.py:31
-def run(self, image, variance=None, mask=None, header=None, work_dir=None):
-    # ... 
-    # NEVER USED - variance parameter ignored
+# task.py:258-260
+fits_file = tmpdir / "input.fits"
+from astropy.io import fits
+fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
+# ⚠️ ONLY the image is written!
+# Variance and mask are STRIPPED OUT
 ```
+
+**What we should be doing:**
+```python
+# Create proper multi-extension FITS
+hdul = fits.HDUList([
+    fits.PrimaryHDU(calexp.image.array),
+    fits.ImageHDU(calexp.variance.array, name='VARIANCE'),
+    fits.ImageHDU(calexp.mask.array, name='MASK'),
+])
+hdul.writeto(str(fits_file), overwrite=True)
+```
+
+**Current impact:**
+- ❌ Extract variance in Python but don't use it
+- ❌ ACTIVELY STRIP IT OUT before passing to C code
+- ❌ C DoPHOT gets degraded input (image only, no uncertainty data)
+- ❌ C code cannot use variance weighting even if designed to
 
 **Where it should be used:**
 1. **PSF measurement weighting** — Fit PSF with variance weighting
@@ -65,7 +122,7 @@ variance = calexp.variance.array  # Loaded
 
 ---
 
-### 2. MASK DATA ❌ (Completely Unused)
+### 2. MASK DATA ❌ (STRIPPED OUT BEFORE C CODE)
 
 **What DP2 FITS provides:**
 ```
@@ -81,18 +138,24 @@ MASK extension has standardized bit flags:
   Bits 8-15: Reserved
 ```
 
-**What we extract:**
+**What we extract in Python:**
 ```python
 # task.py:201
 mask = calexp.mask.array if calexp.mask else None
 ```
 
-**What we actually do with it:**
+**What we actually pass to C code:**
 ```python
-# preprocess_wrapper.py:31
-def run(self, image, variance=None, mask=None, ...):
-    # NEVER USED - mask parameter ignored entirely
+# task.py:260 - we only write IMAGE, no mask!
+fits.writeto(str(fits_file), calexp.image.array, overwrite=True)
+# ⚠️ Mask is STRIPPED OUT before C code runs
 ```
+
+**Current impact:**
+- ❌ Extract mask in Python but don't use it
+- ❌ ACTIVELY STRIP IT OUT before passing to C code
+- ❌ C DoPHOT gets image WITH cosmic rays, bad pixels, saturated areas
+- ❌ C code cannot reject masked pixels even if designed to
 
 **Where it should be used:**
 1. **Star detection** — Don't detect stars on masked pixels
