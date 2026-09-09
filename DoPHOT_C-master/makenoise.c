@@ -1,3 +1,4 @@
+#include <math.h>
 #include "tuneable.h"
 #include "search_struct.h"
 #include "cast_arr.h"
@@ -62,4 +63,49 @@ void makenoise_(int** BIG, int** NOISE, int* NFAST_ptr, int* NSLOW_ptr)
      } // end I (line) loop
 
 
+}
+
+// Variant: compute noise for DN data using pre-computed variance
+// Variance should be in electrons², converts to DN units
+void makenoise_from_variance_(
+     float** variance,      // Input: variance in electrons²
+     int** noise,           // Output: noise in DN
+     int* ndx, int* ndy)
+{
+     int NFAST = *ndx;
+     int NSLOW = *ndy;
+     int NBADBOT   = tune13_.nbadbot;
+     int NBADTOP   = tune13_.nbadtop;
+     int NBADLEFT  = tune13_.nbadleft;
+     int NBADRIGHT = tune13_.nbadright;
+     float EPERDN = tune11_.eperdn;
+
+     float TEMP = 1.0f / EPERDN;  // Convert from electrons to DN
+     int BADLINE, BADPIX;
+     int JTOP = (int)tune3_.itop;
+     int JBOT = (int)tune3_.ibot;
+     int I, J;
+
+     for (I = 0; I < NSLOW; I++){
+          BADLINE = ( (I <= (NBADBOT - 1)) || (I > (NSLOW - NBADTOP - 1)) );
+          for (J = 0; J < NFAST; J++){
+               if (BADLINE){
+                    noise[I][J] = MAGIC;
+               }
+               else{
+                    BADPIX = ( (J <= (NBADLEFT - 1)) || (J > (NFAST - NBADRIGHT - 1)) );
+                    if (BADPIX){
+                         noise[I][J] = MAGIC;
+                    }
+                    else{
+                         // variance in electrons², convert to DN
+                         if (variance[I][J] > 0.0f){
+                              noise[I][J] = (int)(sqrtf(variance[I][J]) * TEMP);
+                         } else {
+                              noise[I][J] = 1;  // Floor value
+                         }
+                    }
+               }
+          }
+     }
 }

@@ -57,12 +57,33 @@ int** readfits_(char* r_file, int* nx_ptr, int* ny_ptr)
           fits_close_file(fptr, &fio_err);
           return NULL;
      }
-     if ((hdu_num != 1) || (hdu_type != 0) || (naxis != 2)){
+     // Accept both:
+     // - Single-extension FITS (hdu_num=1): traditional DoPHOT files
+     // - DP2 multi-extension FITS (hdu_num=4): Rubin data with IMAGE/MASK/VARIANCE
+     if ((hdu_num != 1 && hdu_num != 4) || (hdu_type != 0) || (naxis != 2)){
           printf("NOT VALID FILE FOR DOPHOT ANALYSIS\n");
-          printf("either too many extensions,\n");
-          printf("          invalid HDU type,\n");
-          printf("    or NAXIS in header != 2\n");
+          printf("Expected: 1 HDU (traditional) or 4 HDUs (DP2 format)\n");
+          printf("Got:      %d HDUs\n", hdu_num);
+          printf("HDU type: %d (expect 0), NAXIS: %d (expect 2)\n", hdu_type, naxis);
           return NULL;
+     }
+
+     // For DP2 FITS (4 HDUs): navigate to IMAGE extension (HDU 2)
+     if (hdu_num == 4){
+          fits_movabs_hdu(fptr, 2, NULL, &fio_err);
+          if (fio_err != 0){
+               printf("readfits: error moving to IMAGE extension (HDU 2)\n");
+               fits_close_file(fptr, &fio_err);
+               return NULL;
+          }
+          // Re-read HDU type and NAXIS after moving
+          fits_get_hdu_type(fptr, &hdu_type, &fio_err);
+          fits_read_key(fptr, TSHORT, "NAXIS", &naxis, NAXIS_comment, &fio_err);
+          if ((hdu_type != 0) || (naxis != 2)){
+               printf("readfits: IMAGE extension (HDU 2) is not a valid 2D image\n");
+               fits_close_file(fptr, &fio_err);
+               return NULL;
+          }
      }
      if (lverb > 10){
           fprintf(logfile, "     num HDUs = %d\n", hdu_num );

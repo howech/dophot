@@ -33,7 +33,11 @@
 #include "cast_arr.h"
 #include "tuneup.h"
 #include "readfits.h"
+#include "readfits_nJy.h"
+#include "readfits_variance.h"
+#include "detect_image_units.h"
 #include "makenoise.h"
+#include "makenoise_nJy.h"
 #include "warmstart.h"
 #include "pgauss.h"
 #include "gauss.h"
@@ -281,8 +285,27 @@ int main( int argc, char* argv[])
            
      /* Open input picture. */
      int nx, ny;
-     int** big = readfits_(files[0], &nx, &ny);          
-     int nfast = undergnd_.NFAST = nx; 
+     enum ImageUnits units = detect_image_units_(files[0]);
+
+     if (lverb >= 10){
+          fprintf(logfile, "Image units: %s\n", image_units_string_(units));
+     }
+
+     // For now, only DN is supported in main pipeline
+     // nJy support requires extensive modifications for float arithmetic
+     if (units == UNIT_NJY){
+          printf("ERROR: nanojansky (nJy) images not yet supported in main pipeline\n");
+          printf("Please use DN-calibrated FITS files\n");
+          return 1;
+     }
+
+     int** big = readfits_(files[0], &nx, &ny);
+     if (big == NULL){
+          printf("ERROR: Failed to read FITS image\n");
+          return 1;
+     }
+
+     int nfast = undergnd_.NFAST = nx;
      int nslow = undergnd_.NSLOW = ny; 
      
      printf ("nthpix =  :  %d\n", tune18_.nthpix);
@@ -311,7 +334,21 @@ int main( int argc, char* argv[])
 
      /* making noise array and starting the warmstart if flagged */
      int** noise = malloc_int_2darr(nslow, nfast);
-     makenoise_(big, noise, &nfast, &nslow);
+
+     // Try to read variance from DP2 FITS
+     float** variance = readfits_variance_(files[0], nx, ny);
+     if (variance != NULL){
+          if (lverb >= 10){
+               fprintf(logfile, "Using variance from DP2 FITS file\n");
+          }
+          makenoise_from_variance_(variance, noise, &nfast, &nslow);
+          free_variance_(variance, nslow);
+     } else {
+          if (lverb >= 10){
+               fprintf(logfile, "Computing noise from image (no variance found)\n");
+          }
+          makenoise_(big, noise, &nfast, &nslow);
+     }
      WARM = (flags[5][0] == 'Y');
      char* warmstartfile;
      if (WARM){
