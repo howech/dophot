@@ -5,11 +5,14 @@ Integrates PSF measurement and parameter generation from dophot_preprocess
 into the Rubin PipelineTask context.
 """
 
-from typing import Optional, Tuple, Dict, Any, Union
+from typing import Optional, Tuple, Dict, Any, Union, TYPE_CHECKING
 import logging
 import numpy as np
 import tempfile
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from .config import DoPHOTConfig
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DoPHOTPreprocessor:
     """Wrapper for PSF measurement and parameter generation."""
 
-    def __init__(self, config: any) -> None:
+    def __init__(self, config: "DoPHOTConfig") -> None:
         """
         Initialize preprocessor.
 
@@ -114,7 +117,7 @@ class DoPHOTPreprocessor:
 
         return sigma, params, metadata
 
-    def _extract_image_stats(self, header: Optional[any], image: np.ndarray) -> Dict[str, float]:
+    def _extract_image_stats(self, header: Optional[Dict[str, Any]], image: np.ndarray) -> Dict[str, float]:
         """
         Extract image statistics from FITS header or image data.
 
@@ -309,8 +312,8 @@ class PreprocessingContext:
 
 
 def preprocess_calexp(
-    calexp: any,
-    config: any,
+    calexp: Any,
+    config: "DoPHOTConfig",
     work_dir: Optional[Union[str, Path]] = None
 ) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
     """

@@ -4,10 +4,16 @@ Postprocessing for DoPHOT output.
 Handles aperture corrections, WCS transformation, and magnitude conversion.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 import logging
 import numpy as np
 from astropy.table import Table
+
+if TYPE_CHECKING:
+    from .config import DoPHOTConfig
+    from lsst.afw.image import ExposureF, PhotoCalib
+    from lsst.afw.detection import Psf
+    from lsst.afw.table import SourceCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +21,7 @@ logger = logging.getLogger(__name__)
 class DoPHOTPostprocessor:
     """Postprocess DoPHOT photometry output."""
 
-    def __init__(self, config: any) -> None:
+    def __init__(self, config: "DoPHOTConfig") -> None:
         """
         Initialize postprocessor.
 
@@ -30,9 +36,9 @@ class DoPHOTPostprocessor:
     def run(
         self,
         catalog: Table,
-        calexp: Optional[any] = None,
-        psf: Optional[any] = None,
-        photoCalib: Optional[any] = None
+        calexp: Optional["ExposureF"] = None,
+        psf: Optional["Psf"] = None,
+        photoCalib: Optional["PhotoCalib"] = None
     ) -> Table:
         """
         Run complete postprocessing pipeline.
@@ -88,8 +94,8 @@ class DoPHOTPostprocessor:
     def _apply_aperture_corrections(
         self,
         catalog: Table,
-        calexp: Optional[any] = None,
-        psf: Optional[any] = None
+        calexp: Optional["ExposureF"] = None,
+        psf: Optional["Psf"] = None
     ) -> Table:
         """
         Apply aperture correction to convert aperture mag to total mag.
@@ -129,7 +135,7 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _apply_wcs_transform(self, catalog: Table, calexp: any) -> Table:
+    def _apply_wcs_transform(self, catalog: Table, calexp: "ExposureF") -> Table:
         """
         Transform pixel coordinates to RA/Dec using WCS.
 
@@ -171,7 +177,7 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _apply_magnitude_conversion(self, catalog: Table, photoCalib: any) -> Table:
+    def _apply_magnitude_conversion(self, catalog: Table, photoCalib: "PhotoCalib") -> Table:
         """
         Convert instrumental magnitudes to AB magnitudes.
 
@@ -251,7 +257,7 @@ class DoPHOTPostprocessor:
         return catalog
 
 
-def create_source_catalog(table_data: Table, config: any) -> any:
+def create_source_catalog(table_data: Table, config: "DoPHOTConfig") -> Union[Table, "SourceCatalog"]:
     """
     Convert postprocessed table to Rubin SourceCatalog format.
 
@@ -314,10 +320,10 @@ def create_source_catalog(table_data: Table, config: any) -> any:
 
 def postprocess_dophot_output(
     catalog: Union[Table, str],
-    calexp: Optional[any] = None,
-    photoCalib: Optional[any] = None,
-    config: Optional[any] = None
-) -> any:
+    calexp: Optional["ExposureF"] = None,
+    photoCalib: Optional["PhotoCalib"] = None,
+    config: Optional["DoPHOTConfig"] = None
+) -> Union[Table, "SourceCatalog"]:
     """
     Convenience function for full postprocessing.
 

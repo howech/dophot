@@ -4,10 +4,15 @@ DoPHOT PipelineTask for Rubin Observatory.
 Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 """
 
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING
 import logging
 import tempfile
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from .config import DoPHOTConfig
+    from lsst.afw.image import ExposureF, PhotoCalib
+    from lsst.afw.detection import Psf
 
 try:
     from lsst.pipe.base import PipelineTask, PipelineTaskConnections
@@ -18,7 +23,7 @@ except ImportError:
     HAS_RUBIN_STACK = False
     # Fallback for development
     class PipelineTask:
-        def __init__(self, config: Any, name: Optional[str] = None) -> None:
+        def __init__(self, config: "DoPHOTConfig", name: Optional[str] = None) -> None:
             self.config = config
             self.name = name or self.__class__.__name__
 
@@ -124,7 +129,7 @@ class DoPHOTTask(PipelineTask):
     ConfigClass = DoPHOTConfig
     _DefaultName = "dophot"
 
-    def __init__(self, config: Any, name: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, config: "DoPHOTConfig", name: Optional[str] = None, **kwargs: Any) -> None:
         """Initialize DoPHOT task."""
         super().__init__(config, name=name, **kwargs)
 
@@ -179,7 +184,7 @@ class DoPHOTTask(PipelineTask):
             self.log.error(f"DoPHOT failed: {e}")
             raise
 
-    def _preprocessing(self, calexp: Any) -> Tuple[float, Dict[str, Any]]:
+    def _preprocessing(self, calexp: "ExposureF") -> Tuple[float, Dict[str, Any]]:
         """
         Measure PSF and generate DoPHOT parameters.
 
@@ -216,7 +221,7 @@ class DoPHOTTask(PipelineTask):
             self.log.info(f"✓ Preprocessing complete: sigma={sigma:.3f} pixels")
             return sigma, params
 
-    def _run_dophot(self, calexp: Any, params: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
+    def _run_dophot(self, calexp: "ExposureF", params: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
         """
         Execute DoPHOT photometry using IDL-style workflow.
 
@@ -383,9 +388,9 @@ class DoPHOTTask(PipelineTask):
 
     def _postprocessing(
         self,
-        calexp: Any,
+        calexp: "ExposureF",
         catalog: Any,
-        photoCalib: Any,
+        photoCalib: "PhotoCalib",
         conversion_factors: Optional[Dict[str, Any]] = None
     ) -> Any:
         """
