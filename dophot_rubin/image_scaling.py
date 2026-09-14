@@ -566,7 +566,11 @@ def unscale_int32_to_units(
     return image_float
 
 
-def _get_header_value(header, keyword, default):
+def _get_header_value(
+    header: dict[str, Any] | None,
+    keyword: str,
+    default: float | None
+) -> float | None:
     """Extract value from FITS header with fallback."""
     if header is None:
         return default
