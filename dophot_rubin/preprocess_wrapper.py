@@ -5,11 +5,13 @@ Integrates PSF measurement and parameter generation from dophot_preprocess
 into the Rubin PipelineTask context.
 """
 
-from typing import Optional, Tuple, Dict, Any, Union, TYPE_CHECKING, NamedTuple
 import logging
-import numpy as np
 import tempfile
 from pathlib import Path
+from typing import Any, Dict, NamedTuple, Optional, Tuple, Union
+
+import numpy as np
+
 from .config import DoPHOTConfig
 
 
@@ -146,7 +148,11 @@ class DoPHOTPreprocessor:
             metadata=metadata,
         )
 
-    def _extract_image_stats(self, header: Optional[Dict[str, Any]], image: np.ndarray) -> ImageStats:
+    def _extract_image_stats(
+        self,
+        header: Optional[Dict[str, Any]],
+        image: np.ndarray,
+    ) -> ImageStats:
         """
         Extract image statistics from FITS header or image data.
 
@@ -204,7 +210,11 @@ class DoPHOTPreprocessor:
 
         return result
 
-    def _measure_psf(self, image: np.ndarray, image_stats: ImageStats) -> Tuple[float, int, bool]:
+    def _measure_psf(
+        self,
+        image: np.ndarray,
+        image_stats: ImageStats,
+    ) -> Tuple[float, int, bool]:
         """
         Measure PSF sigma from bright stars.
 
@@ -225,7 +235,8 @@ class DoPHOTPreprocessor:
             Whether measurement succeeded
         """
         from dophot_preprocess.psf_measurement import (
-            detect_bright_stars, measure_psf_sigma
+            detect_bright_stars,
+            measure_psf_sigma,
         )
 
         # Detect bright stars
@@ -236,6 +247,7 @@ class DoPHOTPreprocessor:
 
         # Create temp FITS file for detection (workaround for array-based detection)
         import tempfile
+
         from astropy.io import fits as fits_io
 
         with tempfile.NamedTemporaryFile(suffix='.fits', delete=False) as tmp:
@@ -286,7 +298,11 @@ class DoPHOTPreprocessor:
         sigma = float(np.median(sigmas))
         return sigma, n_stars, True
 
-    def _write_param_file(self, params: Dict[str, Any], work_dir: Optional[Union[str, Path]] = None) -> Path:
+    def _write_param_file(
+        self,
+        params: Dict[str, Any],
+        work_dir: Optional[Union[str, Path]] = None,
+    ) -> Path:
         """
         Write DoPHOT parameter file.
 

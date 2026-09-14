@@ -7,9 +7,10 @@ Follows Abi's IDL prep_dp1_pim.pro approach:
 3. Append PSF to image for DoPHOT input
 """
 
-from typing import Optional, Tuple, Dict, Any, NamedTuple
-import numpy as np
 import logging
+from typing import NamedTuple, Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def measure_psf_simple(
             sigma = radius / 1.177  # Convert FWHM to sigma
             if 0.5 < sigma < 10:  # Reasonable range
                 sigmas.append(sigma)
-        except:
+        except Exception:
             continue
 
     if len(sigmas) == 0:
@@ -279,8 +280,10 @@ def generate_parameter_file(
         f.write("=\n")
         f.write("PSFTYPE = 'PGAUSS'        PSF type: (PGAUSS, GAUSS, EXTPGAUSS)\n")
         f.write("=\n")
-        f.write(f"FWHM = {fwhm:.2e}       Approx FWHM of objects (pixels) along major axis.\n")
-        f.write(f"SKY = {skyval:.1f}             Approximate mean sky value in data numbers.\n")
+        fwhm_comment = "FWHM of objects (pixels) along major axis."
+        f.write(f"FWHM = {fwhm:.2e}       {fwhm_comment}\n")
+        sky_comment = "Approximate mean sky value in data numbers."
+        f.write(f"SKY = {skyval:.1f}             {sky_comment}\n")
         f.write("=\n")
         f.write(f"EPERDN = {1.0/fpdn:.1f}         Electrons per data number\n")
         f.write(f"RDNOISE = {rdne:.1f}       Readout noise in electrons\n")
@@ -376,9 +379,10 @@ def append_psf_to_image(
         psf_work = psf_work + (median_image - median_psf)
 
         # Check saturation
-        if np.max(psf_work) > 0.8 * np.max(image[image > sentinel]):
+        max_image = np.max(image[image > sentinel])
+        if np.max(psf_work) > 0.8 * max_image:
             # Rescale PSF
-            psf_work = psf_work * (0.75 * np.max(image[image > sentinel])) / np.max(psf_work)
+            psf_work = psf_work * (0.75 * max_image) / np.max(psf_work)
             logger.info(f"  Iteration {iteration+1}: Rescaled PSF to fit saturation")
         else:
             logger.info(f"  Iteration {iteration+1}: Border matched")
@@ -398,6 +402,7 @@ def append_psf_to_image(
     psfceny = (psy - 1) / 2 + 1 + ny
     psfcenz = int(psf_work[int(psy / 2), int(psx / 2)])
 
-    logger.info(f"PSF appended. Center: ({psfcenx:.1f}, {psfceny:.1f}), Value: {psfcenz}")
+    msg = f"PSF appended. Center: ({psfcenx:.1f}, {psfceny:.1f}), Value: {psfcenz}"
+    logger.info(msg)
 
     return composite, psfcenx, psfceny, psfcenz

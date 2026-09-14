@@ -4,15 +4,15 @@ DoPHOT PipelineTask for Rubin Observatory.
 Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 """
 
-from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING, NamedTuple
 import logging
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Optional, Tuple
+
 from .config import DoPHOTConfig
 
 if TYPE_CHECKING:
     from lsst.afw.image import ExposureF, PhotoCalib
-    from lsst.afw.detection import Psf
 
 
 class ConversionFactors(NamedTuple):
@@ -22,8 +22,8 @@ class ConversionFactors(NamedTuple):
     description: str
 
 try:
-    from lsst.pipe.base import PipelineTask, PipelineTaskConnections
     from lsst.pex.config import Config
+    from lsst.pipe.base import PipelineTask, PipelineTaskConnections
     from lsst.pipe.base import connectionTypes as cT
     HAS_RUBIN_STACK = True
 except ImportError:
@@ -52,12 +52,19 @@ except ImportError:
     cT = MockConnectionTypes()
 
 from .config import DoPHOTConfig
-from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
-from .postprocess import DoPHOTPostprocessor
 from .execute_dophot import DoPHOTExecutor
-from .image_scaling import detect_units, scale_image_to_int32, apply_mask_to_scaled_image, unscale_int32_to_units
-from .psf_measurement import measure_psf_simple, generate_parameter_file, append_psf_to_image
-
+from .image_scaling import (
+    apply_mask_to_scaled_image,
+    detect_units,
+    scale_image_to_int32,
+)
+from .postprocess import DoPHOTPostprocessor
+from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
+from .psf_measurement import (
+    append_psf_to_image,
+    generate_parameter_file,
+    measure_psf_simple,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +145,12 @@ class DoPHOTTask(PipelineTask):
 
     config: DoPHOTConfig
 
-    def __init__(self, config: DoPHOTConfig, name: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        config: DoPHOTConfig,
+        name: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize DoPHOT task."""
         super().__init__(config, name=name, **kwargs)
 
@@ -230,7 +242,11 @@ class DoPHOTTask(PipelineTask):
             self.log.info(f"✓ Preprocessing complete: sigma={sigma:.3f} pixels")
             return sigma, params
 
-    def _run_dophot(self, calexp: "ExposureF", params: Any) -> Tuple[Any, ConversionFactors]:
+    def _run_dophot(
+        self,
+        calexp: "ExposureF",
+        params: Any,
+    ) -> Tuple[Any, ConversionFactors]:
         """
         Execute DoPHOT photometry using IDL-style workflow.
 
@@ -257,10 +273,11 @@ class DoPHOTTask(PipelineTask):
         conversion_factors : dict
             Conversion factors (units -> int32 scale -> back to units)
         """
-        from dophot_preprocess import param_file_writer
-        from astropy.table import Table
         import shutil
+
         from astropy.io import fits
+        from astropy.table import Table
+        from dophot_preprocess import param_file_writer
 
         self.log.info("Running DoPHOT photometry (IDL-style workflow)")
 
@@ -291,10 +308,14 @@ class DoPHOTTask(PipelineTask):
                 mask = calexp.mask.array if calexp.mask else None
                 variance = calexp.variance.array if calexp.variance else None
 
-                # Step 1: Scale image to int32 (excluding masked pixels from calculations)
+                # Step 1: Scale image to int32 (excluding masked pixels)
                 self.log.info("Scaling image to int32 intermediate representation")
                 image_int32, conversion_factor, scale_metadata = scale_image_to_int32(
-                    image, units, header=header, mask=mask, variance=variance
+                    image,
+                    units,
+                    header=header,
+                    mask=mask,
+                    variance=variance,
                 )
                 self.log.info(f"Scale metadata: mprec={scale_metadata.get('mprec')}, "
                              f"epdn={scale_metadata.get('epdn'):.4f}")
@@ -364,7 +385,9 @@ class DoPHOTTask(PipelineTask):
                 # Write single-HDU FITS file (DoPHOT compatible)
                 hdul = fits.HDUList([primary_hdu])
                 hdul.writeto(str(intermediate_fits), overwrite=True)
-                self.log.info(f"✓ Intermediate I*4 FITS written (DoPHOT-compatible format)")
+                self.log.info(
+                    "✓ Intermediate I*4 FITS written (DoPHOT-compatible format)"
+                )
 
                 # Step 7: Run DoPHOT on intermediate I*4
                 self.log.info("Executing DoPHOT on intermediate I*4 image")
@@ -385,7 +408,11 @@ class DoPHOTTask(PipelineTask):
                     description=f'{units} = int32 * {conversion_factor:.6f}'
                 )
 
-                self.log.info(f"Conversion factor for postprocessing: {conversion_factor:.6f} {units}/int32")
+                msg = (
+                    f"Conversion factor for postprocessing: "
+                    f"{conversion_factor:.6f} {units}/int32"
+                )
+                self.log.info(msg)
 
                 return catalog, conversion_factors
 

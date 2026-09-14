@@ -1,6 +1,7 @@
 """Unit tests for DoPHOT configuration."""
 
 import unittest
+
 from dophot_rubin.config import DoPHOTConfig
 
 

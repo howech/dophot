@@ -2,9 +2,10 @@
 Parse DoPHOT output catalog and convert back to original units.
 """
 
-from typing import Dict, Any, Optional
-import numpy as np
 from pathlib import Path
+from typing import Any, Dict
+
+import numpy as np
 from astropy.table import Table
 
 
@@ -13,7 +14,8 @@ def parse_obj_out(filepath: str) -> Dict[str, Any]:
     Parse DoPHOT obj_out file format.
 
     DoPHOT outputs space-separated columns:
-    ID TYPE SKY X Y FLUX PSF_A PSF_B PSF_ELONGATION PSF_PA CHI2_A CHI2_B SHARPNESS EXTRAS...
+    ID TYPE SKY X Y FLUX PSF_A PSF_B PSF_ELONGATION PSF_PA CHI2_A CHI2_B
+    SHARPNESS EXTRAS...
 
     Returns a dict with source data.
     """
@@ -143,14 +145,20 @@ if __name__ == '__main__':
     sources = parse_obj_out(obj_file)
 
     print(f"Found {len(sources['id'])} sources")
-    print(f"Flux range (int32): {sources['flux'].min():.0f} to {sources['flux'].max():.0f}")
+    flux_min = sources['flux'].min()
+    flux_max = sources['flux'].max()
+    print(f"Flux range (int32): {flux_min:.0f} to {flux_max:.0f}")
 
     # Convert back to DN
     conversion_factor = 11.8496  # DN/int32
     catalog = convert_to_original_units(sources, conversion_factor, 'DN')
 
-    print(f"\nFlux range (DN): {catalog['flux'].min():.2f} to {catalog['flux'].max():.2f}")
-    print(f"Sky range (DN): {catalog['sky'].min():.2f} to {catalog['sky'].max():.2f}")
+    flux_min = catalog['flux'].min()
+    flux_max = catalog['flux'].max()
+    sky_min = catalog['sky'].min()
+    sky_max = catalog['sky'].max()
+    print(f"\nFlux range (DN): {flux_min:.2f} to {flux_max:.2f}")
+    print(f"Sky range (DN): {sky_min:.2f} to {sky_max:.2f}")
 
     print("\nTop 10 brightest sources:")
     sorted_cat = catalog[np.argsort(-catalog['flux'])[:10]]

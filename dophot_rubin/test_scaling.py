@@ -5,15 +5,15 @@ Test script for DoPHOT image scaling workflow.
 Tests the complete preprocessing pipeline on 47Tuc FITS file.
 """
 
-from typing import Optional, Tuple, Dict, Any
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from astropy.io import fits
-from image_scaling import (
-    detect_units, scale_image_to_int32, apply_mask_to_scaled_image
-)
+from image_scaling import apply_mask_to_scaled_image, detect_units, scale_image_to_int32
 from psf_measurement import (
-    measure_psf_simple, generate_parameter_file, append_psf_to_image
+    append_psf_to_image,
+    generate_parameter_file,
+    measure_psf_simple,
 )
 
 # Find test file
@@ -73,10 +73,10 @@ image_int32, conversion_factor, scale_metadata = scale_image_to_int32(
     image, units, header=image_header, mask=mask, variance=variance
 )
 
-print(f"✓ Image scaled to int32")
+print("✓ Image scaled to int32")
 print(f"  Shape: {image_int32.shape}, dtype: {image_int32.dtype}")
 print(f"  Min/max: {np.min(image_int32[image_int32>-30000]):.1f} / {np.max(image_int32):.1f}")
-print(f"\nScale metadata:")
+print("\nScale metadata:")
 for key, val in scale_metadata.items():
     if isinstance(val, float):
         print(f"  {key}: {val:.4f}")
@@ -92,7 +92,7 @@ print("="*70)
 if mask is not None:
     image_int32_masked = apply_mask_to_scaled_image(image_int32, mask)
     sentinel_count = np.sum(image_int32_masked <= -30000)
-    print(f"✓ Mask applied to scaled image")
+    print("✓ Mask applied to scaled image")
     print(f"  Sentinel pixels: {sentinel_count}")
 else:
     image_int32_masked = image_int32
@@ -103,7 +103,7 @@ print("STEP 4: Measure PSF")
 print("="*70)
 
 sigma, beta4, beta6, beta8 = measure_psf_simple(image_int32_masked, mask=mask)
-print(f"✓ PSF measured:")
+print("✓ PSF measured:")
 print(f"  sigma: {sigma:.2f} pixels")
 print(f"  beta4: {beta4:.2f}, beta6: {beta6:.2f}, beta8: {beta8:.2f}")
 
@@ -137,7 +137,7 @@ print("="*70)
 image_with_psf, psfcenx, psfceny, psfcenz = append_psf_to_image(
     image_int32_masked, image_int32_masked
 )
-print(f"✓ PSF appended to image")
+print("✓ PSF appended to image")
 print(f"  Original shape: {image_int32_masked.shape}")
 print(f"  New shape: {image_with_psf.shape}")
 print(f"  PSF center: ({psfcenx:.1f}, {psfceny:.1f}), value: {psfcenz}")
@@ -176,7 +176,7 @@ print(f"✓ Intermediate I*4 FITS written: {intermediate_fits}")
 print("\n" + "="*70)
 print("PREPROCESSING COMPLETE")
 print("="*70)
-print(f"\nSummary:")
+print("\nSummary:")
 print(f"  Input: {fits_file.name}")
 print(f"  Units: {units}")
 print(f"  Scale factor (epdn): {scale_metadata.get('epdn', 1.0):.4f} {units}/int32")
@@ -184,4 +184,4 @@ print(f"  Median precision (mprec): {scale_metadata.get('mprec', 2)}")
 print(f"  PSF sigma: {sigma:.2f} pixels")
 print(f"  Output FITS: {intermediate_fits}")
 print(f"  Parameter file: {param_file}")
-print(f"\n✓ Pipeline ready for DoPHOT execution\n")
+print("\n✓ Pipeline ready for DoPHOT execution\n")

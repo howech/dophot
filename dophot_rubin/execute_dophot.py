@@ -4,12 +4,14 @@ DoPHOT C library execution wrapper.
 Handles calling the compiled DoPHOT C code with generated parameter files.
 """
 
-from typing import Optional, Union
 import logging
 import subprocess
 from pathlib import Path
+from typing import Optional, Union
+
 from astropy.io import ascii
 from astropy.table import Table
+
 from .config import DoPHOTConfig
 
 logger = logging.getLogger(__name__)
@@ -96,7 +98,9 @@ class DoPHOTExecutor:
         try:
             # DoPHOT is interactive - provide parameter file via stdin
             # The executable expects the parameter file name as input
-            param_file_input = param_file.name if not param_file.is_absolute() else str(param_file)
+            param_file_input = (
+                param_file.name if not param_file.is_absolute() else str(param_file)
+            )
 
             # Execute DoPHOT
             result = subprocess.run(

@@ -20,10 +20,10 @@ Usage:
 """
 
 from .config import DoPHOTConfig
-from .task import DoPHOTTask, DoPHOTConnections
-from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
-from .postprocess import DoPHOTPostprocessor, create_source_catalog
 from .execute_dophot import DoPHOTExecutor, execute_dophot
+from .postprocess import DoPHOTPostprocessor, create_source_catalog
+from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
+from .task import DoPHOTConnections, DoPHOTTask
 
 __version__ = '0.1.0'
 __all__ = [

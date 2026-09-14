@@ -6,9 +6,9 @@ conversion factor tracking, following the IDL DoPHOT workflow.
 """
 
 import logging
-from typing import Optional, Tuple, Dict, Any, NamedTuple
+from typing import Any, Dict, NamedTuple, Optional, Tuple
+
 import numpy as np
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,8 @@ def scale_dn_to_int32(
     # (Following IDL prep_dp1_pim.pro logic)
     if sky is not None and not sky_subtracted:
         image_working = image + sky
-        logger.info(f"Added sky back to image: {sky:.1f} DN (sky was not pre-subtracted)")
+        msg = f"Added sky back to image: {sky:.1f} DN (sky was not pre-subtracted)"
+        logger.info(msg)
     else:
         image_working = image.copy()
         if sky_subtracted:
@@ -350,8 +351,11 @@ def scale_njy_to_int32(
     # Same formula as DN, but in nJy units
     noisethresh = np.sqrt(skyval + readnoise_nJy**2)
 
-    logger.info(f"nJy→int32: skyval={skyval:.2f} nJy, readnoise={readnoise_nJy:.2f} nJy, "
-                f"noisethresh={noisethresh:.2f} nJy")
+    msg = (
+        f"nJy→int32: skyval={skyval:.2f} nJy, readnoise={readnoise_nJy:.2f} nJy, "
+        f"noisethresh={noisethresh:.2f} nJy"
+    )
+    logger.info(msg)
 
     # Find scaling factor using same algorithm as DN
     # Use only unmasked pixels for maxsky
@@ -422,8 +426,9 @@ def scale_image_to_int32(
     """
     Scale image to int32 intermediate representation.
 
-    Uses Abi's algorithm to find optimal scaling so noise is sampled at 2+ integer counts.
-    Excludes masked pixels from scaling calculations to avoid biasing towards bad pixels.
+    Uses Abi's algorithm to find optimal scaling so noise is sampled at 2+
+    integer counts. Excludes masked pixels from scaling calculations to avoid
+    biasing towards bad pixels.
 
     Parameters
     ----------
@@ -564,7 +569,11 @@ def unscale_int32_to_units(
         Image in original units
     """
     image_float = image_int32.astype(np.float32) * conversion_factor
-    logger.info(f"Converted int32 image back to {units} using factor {conversion_factor:.6f}")
+    msg = (
+        f"Converted int32 image back to {units} "
+        f"using factor {conversion_factor:.6f}"
+    )
+    logger.info(msg)
     return image_float
 
 

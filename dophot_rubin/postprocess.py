@@ -4,15 +4,17 @@ Postprocessing for DoPHOT output.
 Handles aperture corrections, WCS transformation, and magnitude conversion.
 """
 
-from typing import Optional, Union, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Optional, Union
+
 import numpy as np
 from astropy.table import Table
+
 from .config import DoPHOTConfig
 
 if TYPE_CHECKING:
-    from lsst.afw.image import ExposureF, PhotoCalib
     from lsst.afw.detection import Psf
+    from lsst.afw.image import ExposureF, PhotoCalib
     from lsst.afw.table import SourceCatalog
 
 logger = logging.getLogger(__name__)
@@ -180,7 +182,11 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _apply_magnitude_conversion(self, catalog: Table, photoCalib: "PhotoCalib") -> Table:
+    def _apply_magnitude_conversion(
+        self,
+        catalog: Table,
+        photoCalib: "PhotoCalib",
+    ) -> Table:
         """
         Convert instrumental magnitudes to AB magnitudes.
 
@@ -260,7 +266,10 @@ class DoPHOTPostprocessor:
         return catalog
 
 
-def create_source_catalog(table_data: Table, config: DoPHOTConfig) -> Union[Table, "SourceCatalog"]:
+def create_source_catalog(
+    table_data: Table,
+    config: DoPHOTConfig,
+) -> Union[Table, "SourceCatalog"]:
     """
     Convert postprocessed table to Rubin SourceCatalog format.
 

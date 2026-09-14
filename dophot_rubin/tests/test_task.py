@@ -1,7 +1,7 @@
 """Unit tests for DoPHOT PipelineTask."""
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 
 from dophot_rubin.config import DoPHOTConfig

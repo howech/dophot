@@ -1,9 +1,10 @@
 """Unit tests for preprocessing wrapper."""
 
-import unittest
 import tempfile
-import numpy as np
+import unittest
 from pathlib import Path
+
+import numpy as np
 
 from dophot_rubin.config import DoPHOTConfig
 from dophot_rubin.preprocess_wrapper import DoPHOTPreprocessor
@@ -123,8 +124,9 @@ class TestPreprocessingContext(unittest.TestCase):
 
     def test_context_with_custom_dir(self):
         """Test context manager with custom directory."""
-        from dophot_rubin.preprocess_wrapper import PreprocessingContext
         import tempfile
+
+        from dophot_rubin.preprocess_wrapper import PreprocessingContext
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with PreprocessingContext(tmpdir) as work_dir:
