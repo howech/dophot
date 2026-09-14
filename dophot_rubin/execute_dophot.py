@@ -83,16 +83,15 @@ class DoPHOTExecutor:
         self.log.debug(f"  Parameters: {param_file}")
         self.log.debug(f"  Output dir: {output_dir}")
 
-        # Build DoPHOT command
-        cmd = [
-            str(self.config.doPHOTExecPath),
-            str(param_file),  # DoPHOT reads param file
-        ]
-
         try:
+            # DoPHOT is interactive - provide parameter file via stdin
+            # The executable expects the parameter file name as input
+            param_file_input = param_file.name if not param_file.is_absolute() else str(param_file)
+
             # Execute DoPHOT
             result = subprocess.run(
-                cmd,
+                [str(self.config.doPHOTExecPath)],
+                input=f"{param_file_input}\n",
                 cwd=str(output_dir),
                 capture_output=True,
                 text=True,
