@@ -5,7 +5,7 @@ Integrates PSF measurement and parameter generation from dophot_preprocess
 into the Rubin PipelineTask context.
 """
 
-from typing import Optional, Tuple, Dict, Any, Union, TYPE_CHECKING
+from typing import Optional, Tuple, Dict, Any, Union, TYPE_CHECKING, NamedTuple
 import logging
 import numpy as np
 import tempfile
@@ -13,6 +13,30 @@ from pathlib import Path
 
 if TYPE_CHECKING:
     from .config import DoPHOTConfig
+
+
+class ImageStats(NamedTuple):
+    """Image statistics extracted from header or image data."""
+    sky_value: float
+    sky_rms: float
+    gain: float
+    rdnoise: float
+    saturation: float
+
+
+class PreprocessingMetadata(NamedTuple):
+    """Metadata from preprocessing operation."""
+    n_stars_measured: int
+    param_file: str
+    image_stats: ImageStats
+    psfSigma: float
+
+
+class PreprocessingResult(NamedTuple):
+    """Complete result from preprocessing."""
+    sigma: float
+    params: Any  # PSFParameters but imported in TYPE_CHECKING
+    metadata: PreprocessingMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +61,9 @@ class DoPHOTPreprocessor:
         image: np.ndarray,
         variance: Optional[np.ndarray] = None,
         mask: Optional[np.ndarray] = None,
-        header: Optional[any] = None,
+        header: Optional[Dict[str, Any]] = None,
         work_dir: Optional[Union[str, Path]] = None
-    ) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
+    ) -> PreprocessingResult:
         """
         Run complete preprocessing pipeline.
 
@@ -108,16 +132,20 @@ class DoPHOTPreprocessor:
         # Write parameter file
         param_file = self._write_param_file(params, work_dir)
 
-        metadata = {
-            'n_stars_measured': n_stars,
-            'param_file': str(param_file),
-            'image_stats': image_stats,
-            'psfSigma': sigma,
-        }
+        metadata = PreprocessingMetadata(
+            n_stars_measured=n_stars,
+            param_file=str(param_file),
+            image_stats=image_stats,
+            psfSigma=sigma,
+        )
 
-        return sigma, params, metadata
+        return PreprocessingResult(
+            sigma=sigma,
+            params=params,
+            metadata=metadata,
+        )
 
-    def _extract_image_stats(self, header: Optional[Dict[str, Any]], image: np.ndarray) -> Dict[str, float]:
+    def _extract_image_stats(self, header: Optional[Dict[str, Any]], image: np.ndarray) -> ImageStats:
         """
         Extract image statistics from FITS header or image data.
 
@@ -160,14 +188,22 @@ class DoPHOTPreprocessor:
             stats['saturation'] = 60000
             stats['rdnoise'] = 10.0
 
-        self.log.debug(f"Image stats: sky={stats['sky_value']:.1f}, "
-                      f"gain={stats['gain']:.2f}, "
-                      f"rdnoise={stats['rdnoise']:.1f}, "
-                      f"saturation={int(stats['saturation'])}")
+        result = ImageStats(
+            sky_value=stats['sky_value'],
+            sky_rms=stats['sky_rms'],
+            gain=stats['gain'],
+            rdnoise=stats['rdnoise'],
+            saturation=stats['saturation'],
+        )
 
-        return stats
+        self.log.debug(f"Image stats: sky={result.sky_value:.1f}, "
+                      f"gain={result.gain:.2f}, "
+                      f"rdnoise={result.rdnoise:.1f}, "
+                      f"saturation={int(result.saturation)}")
 
-    def _measure_psf(self, image: np.ndarray, image_stats: Dict[str, float]) -> Tuple[float, int, bool]:
+        return result
+
+    def _measure_psf(self, image: np.ndarray, image_stats: ImageStats) -> Tuple[float, int, bool]:
         """
         Measure PSF sigma from bright stars.
 
@@ -315,7 +351,7 @@ def preprocess_calexp(
     calexp: Any,
     config: "DoPHOTConfig",
     work_dir: Optional[Union[str, Path]] = None
-) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
+) -> PreprocessingResult:
     """
     Convenience function to preprocess a Rubin calexp.
 

@@ -4,7 +4,7 @@ DoPHOT PipelineTask for Rubin Observatory.
 Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 """
 
-from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING
+from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING, NamedTuple
 import logging
 import tempfile
 from pathlib import Path
@@ -13,6 +13,13 @@ if TYPE_CHECKING:
     from .config import DoPHOTConfig
     from lsst.afw.image import ExposureF, PhotoCalib
     from lsst.afw.detection import Psf
+
+
+class ConversionFactors(NamedTuple):
+    """Conversion factors for transforming photometry units."""
+    units: str
+    factor: float
+    description: str
 
 try:
     from lsst.pipe.base import PipelineTask, PipelineTaskConnections
@@ -221,7 +228,7 @@ class DoPHOTTask(PipelineTask):
             self.log.info(f"✓ Preprocessing complete: sigma={sigma:.3f} pixels")
             return sigma, params
 
-    def _run_dophot(self, calexp: "ExposureF", params: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
+    def _run_dophot(self, calexp: "ExposureF", params: Any) -> Tuple[Any, ConversionFactors]:
         """
         Execute DoPHOT photometry using IDL-style workflow.
 
@@ -370,11 +377,11 @@ class DoPHOTTask(PipelineTask):
 
                 # Step 4: Convert results back to original units
                 # (This would be done by postprocessing based on the conversion factor)
-                conversion_factors = {
-                    'units': units,
-                    'factor': conversion_factor,
-                    'description': f'{units} = int32 * {conversion_factor:.6f}'
-                }
+                conversion_factors = ConversionFactors(
+                    units=units,
+                    factor=conversion_factor,
+                    description=f'{units} = int32 * {conversion_factor:.6f}'
+                )
 
                 self.log.info(f"Conversion factor for postprocessing: {conversion_factor:.6f} {units}/int32")
 
@@ -384,14 +391,14 @@ class DoPHOTTask(PipelineTask):
                 self.log.error(f"DoPHOT execution failed: {e}")
                 import traceback
                 traceback.print_exc()
-                return Table(), {}
+                return Table(), ConversionFactors(units='unknown', factor=1.0, description='error')
 
     def _postprocessing(
         self,
         calexp: "ExposureF",
         catalog: Any,
         photoCalib: "PhotoCalib",
-        conversion_factors: Optional[Dict[str, Any]] = None
+        conversion_factors: Optional[ConversionFactors] = None
     ) -> Any:
         """
         Postprocess DoPHOT output.

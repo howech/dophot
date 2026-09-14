@@ -7,11 +7,35 @@ Follows Abi's IDL prep_dp1_pim.pro approach:
 3. Append PSF to image for DoPHOT input
 """
 
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, NamedTuple
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class PSFParameters(NamedTuple):
+    """PSF parameters for DoPHOT."""
+    sigma: float
+    beta4: float
+    beta6: float
+    beta8: float
+    fwhm: float
+    pxth: float
+    nfitbox: int
+    maskbox: int
+    apbox: int
+    empbox: int
+    rdne: float
+    nse_dn: float
+    skyval: float
+    epdn: float
+    fpdn: float
+    gain: float
+    saturation: float
+    mprec: int
+    nx: int
+    ny: int
 
 
 def measure_psf_simple(
@@ -137,7 +161,7 @@ def generate_parameter_file(
     mask: Optional[np.ndarray] = None,
     image_file: Optional[str] = None,
     verbose: bool = False
-) -> Dict[str, Any]:
+) -> PSFParameters:
     """
     Generate DoPHOT parameter file (DoPHOT-compatible format).
 
@@ -214,28 +238,28 @@ def generate_parameter_file(
     # Noise in DN
     nse_dn = np.sqrt(skyval * epdn + rdne * rdne) / epdn
 
-    params = {
-        'sigma': sigma,
-        'beta4': beta4,
-        'beta6': beta6,
-        'beta8': beta8,
-        'fwhm': fwhm,
-        'pxth': pxth,
-        'nfitbox': nfitbox,
-        'maskbox': maskbox,
-        'apbox': apbox,
-        'empbox': empbox,
-        'rdne': rdne,
-        'nse_dn': nse_dn,
-        'skyval': skyval,
-        'epdn': epdn,
-        'fpdn': fpdn,
-        'gain': gain,
-        'saturation': saturation,
-        'mprec': mprec,
-        'nx': nx,
-        'ny': ny,
-    }
+    params = PSFParameters(
+        sigma=sigma,
+        beta4=beta4,
+        beta6=beta6,
+        beta8=beta8,
+        fwhm=fwhm,
+        pxth=pxth,
+        nfitbox=nfitbox,
+        maskbox=maskbox,
+        apbox=apbox,
+        empbox=empbox,
+        rdne=rdne,
+        nse_dn=nse_dn,
+        skyval=skyval,
+        epdn=epdn,
+        fpdn=fpdn,
+        gain=gain,
+        saturation=saturation,
+        mprec=mprec,
+        nx=nx,
+        ny=ny,
+    )
 
     # Generate output file names
     if image_file:

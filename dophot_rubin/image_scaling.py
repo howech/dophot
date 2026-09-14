@@ -6,11 +6,22 @@ conversion factor tracking, following the IDL DoPHOT workflow.
 """
 
 import logging
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, NamedTuple
 import numpy as np
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+class ScaleMetadata(NamedTuple):
+    """Metadata from image scaling operation."""
+    epdn: float
+    mprec: int
+    readnoise: float
+    skyval: float
+    noisethresh: float
+    gain: Optional[float] = None
+    gain_scaled: Optional[float] = None
 
 
 def calculate_sky_gain(
@@ -128,7 +139,7 @@ def scale_dn_to_int32(
     mask: Optional[np.ndarray] = None,
     sky: Optional[float] = None,
     sky_subtracted: bool = False
-) -> Tuple[np.ndarray, float, Dict[str, Any]]:
+) -> Tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale DN image to I*4 (int32) with proper noise digitization.
 
@@ -262,15 +273,15 @@ def scale_dn_to_int32(
     logger.info(f"DN→int32 result: scale_factor={epdn:.4f}, "
                 f"conversion_factor={conversion_factor:.6f} DN/int32, mprec={mprec}")
 
-    metadata = {
-        'epdn': epdn,
-        'mprec': mprec,
-        'gain': gain,
-        'gain_scaled': gain_scaled,
-        'readnoise': readnoise,
-        'skyval': skyval,
-        'noisethresh': noisethresh,
-    }
+    metadata = ScaleMetadata(
+        epdn=epdn,
+        mprec=mprec,
+        readnoise=readnoise,
+        skyval=skyval,
+        noisethresh=noisethresh,
+        gain=gain,
+        gain_scaled=gain_scaled,
+    )
 
     return image_int32, conversion_factor, metadata
 
@@ -279,7 +290,7 @@ def scale_njy_to_int32(
     image: np.ndarray,
     readnoise_nJy: Optional[float] = None,
     mask: Optional[np.ndarray] = None
-) -> Tuple[np.ndarray, float, Dict[str, Any]]:
+) -> Tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale nJy image to I*4 (int32) with proper noise digitization.
 
@@ -387,13 +398,13 @@ def scale_njy_to_int32(
     logger.info(f"nJy→int32 result: scale_factor={epdn:.4f}, "
                 f"conversion_factor={conversion_factor:.6f} nJy/int32, mprec={mprec}")
 
-    metadata = {
-        'epdn': epdn,
-        'mprec': mprec,
-        'readnoise': readnoise_nJy,
-        'skyval': skyval,
-        'noisethresh': noisethresh,
-    }
+    metadata = ScaleMetadata(
+        epdn=epdn,
+        mprec=mprec,
+        readnoise=readnoise_nJy,
+        skyval=skyval,
+        noisethresh=noisethresh,
+    )
 
     return image_int32, conversion_factor, metadata
 
@@ -407,7 +418,7 @@ def scale_image_to_int32(
     saturation: Optional[float] = None,
     mask: Optional[np.ndarray] = None,
     variance: Optional[np.ndarray] = None
-) -> Tuple[np.ndarray, float, Dict[str, Any]]:
+) -> Tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale image to int32 intermediate representation.
 
