@@ -3,13 +3,29 @@ Parse DoPHOT output catalog and convert back to original units.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 from astropy.table import Table
 
 
-def parse_obj_out(filepath: str) -> dict[str, Any]:
+class DoPHOTSources(NamedTuple):
+    """Parsed DoPHOT source catalog from obj_out file."""
+    id: np.ndarray
+    type: np.ndarray
+    sky: np.ndarray
+    x: np.ndarray
+    y: np.ndarray
+    flux: np.ndarray
+    psf_a: np.ndarray
+    psf_b: np.ndarray
+    psf_elong: np.ndarray
+    psf_pa: np.ndarray
+    chi2_a: np.ndarray
+    chi2_b: np.ndarray
+
+
+def parse_obj_out(filepath: str) -> DoPHOTSources:
     """
     Parse DoPHOT obj_out file format.
 
@@ -26,26 +42,24 @@ def parse_obj_out(filepath: str) -> dict[str, Any]:
         data = data.reshape(1, -1)
 
     # Extract columns (based on DoPHOT output format)
-    sources = {
-        'id': data[:, 0].astype(int),
-        'type': data[:, 1].astype(int),
-        'sky': data[:, 2],
-        'x': data[:, 3],
-        'y': data[:, 4],
-        'flux': data[:, 5],  # In int32 units
-        'psf_a': data[:, 6],
-        'psf_b': data[:, 7],
-        'psf_elong': data[:, 8],
-        'psf_pa': data[:, 9],
-        'chi2_a': data[:, 10] if data.shape[1] > 10 else np.zeros(len(data)),
-        'chi2_b': data[:, 11] if data.shape[1] > 11 else np.zeros(len(data)),
-    }
-
-    return sources
+    return DoPHOTSources(
+        id=data[:, 0].astype(int),
+        type=data[:, 1].astype(int),
+        sky=data[:, 2],
+        x=data[:, 3],
+        y=data[:, 4],
+        flux=data[:, 5],  # In int32 units
+        psf_a=data[:, 6],
+        psf_b=data[:, 7],
+        psf_elong=data[:, 8],
+        psf_pa=data[:, 9],
+        chi2_a=data[:, 10] if data.shape[1] > 10 else np.zeros(len(data)),
+        chi2_b=data[:, 11] if data.shape[1] > 11 else np.zeros(len(data)),
+    )
 
 
 def convert_to_original_units(
-    sources: dict[str, Any],
+    sources: DoPHOTSources,
     conversion_factor: float,
     original_units: str = 'DN'
 ) -> Table:
@@ -54,8 +68,8 @@ def convert_to_original_units(
 
     Parameters
     ----------
-    sources : dict
-        Source data dict from parse_obj_out()
+    sources : DoPHOTSources
+        Source data from parse_obj_out()
     conversion_factor : float
         Scale factor (DN/int32 or nJy/int32)
     original_units : str
@@ -67,24 +81,24 @@ def convert_to_original_units(
         Source catalog in original units
     """
     # Convert flux and sky from int32 to original units
-    flux_original = sources['flux'] * conversion_factor
-    sky_original = sources['sky'] * conversion_factor
+    flux_original = sources.flux * conversion_factor
+    sky_original = sources.sky * conversion_factor
 
     # Create output table
     catalog = Table({
-        'id': sources['id'],
-        'type': sources['type'],
-        'x': sources['x'],
-        'y': sources['y'],
+        'id': sources.id,
+        'type': sources.type,
+        'x': sources.x,
+        'y': sources.y,
         'flux': flux_original,
-        'flux_dn': sources['flux'],  # Also keep int32 values for reference
+        'flux_dn': sources.flux,  # Also keep int32 values for reference
         'sky': sky_original,
-        'psf_a': sources['psf_a'],
-        'psf_b': sources['psf_b'],
-        'psf_elong': sources['psf_elong'],
-        'psf_pa': sources['psf_pa'],
-        'chi2_a': sources['chi2_a'],
-        'chi2_b': sources['chi2_b'],
+        'psf_a': sources.psf_a,
+        'psf_b': sources.psf_b,
+        'psf_elong': sources.psf_elong,
+        'psf_pa': sources.psf_pa,
+        'chi2_a': sources.chi2_a,
+        'chi2_b': sources.chi2_b,
     })
 
     # Add units to columns
@@ -144,9 +158,9 @@ if __name__ == '__main__':
     print("Parsing DoPHOT output...")
     sources = parse_obj_out(obj_file)
 
-    print(f"Found {len(sources['id'])} sources")
-    flux_min = sources['flux'].min()
-    flux_max = sources['flux'].max()
+    print(f"Found {len(sources.id)} sources")
+    flux_min = sources.flux.min()
+    flux_max = sources.flux.max()
     print(f"Flux range (int32): {flux_min:.0f} to {flux_max:.0f}")
 
     # Convert back to DN
