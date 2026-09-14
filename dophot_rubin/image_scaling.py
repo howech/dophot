@@ -185,14 +185,8 @@ def scale_dn_to_int32(
     # Step 3: Create quality mask: exclude bad/masked pixels
     good_pixels = np.ones(image_working.shape, dtype=bool)
     if mask is not None:
-        # Any flagged bit makes pixel bad
-        flagged = (
-            ((mask & 1) != 0) |  # Bad
-            ((mask & 2) != 0) |  # Saturated
-            ((mask & 4) != 0) |  # Interpolated
-            ((mask & 8) != 0) |  # Cosmic ray
-            ((mask & 16) != 0)   # Edge
-        )
+        # Any flagged bit makes pixel bad (bits 0-4: bad/sat/interp/cosmic/edge)
+        flagged = (mask & 31) != 0
         good_pixels &= ~flagged
         logger.info(f"Excluding {np.sum(~good_pixels)} masked pixels from scaling")
 
@@ -314,14 +308,8 @@ def scale_njy_to_int32(
     # Create quality mask: exclude bad/masked pixels
     good_pixels = np.ones(image.shape, dtype=bool)
     if mask is not None:
-        # Any flagged bit makes pixel bad
-        flagged = (
-            ((mask & 1) != 0) |  # Bad
-            ((mask & 2) != 0) |  # Saturated
-            ((mask & 4) != 0) |  # Interpolated
-            ((mask & 8) != 0) |  # Cosmic ray
-            ((mask & 16) != 0)   # Edge
-        )
+        # Any flagged bit makes pixel bad (bits 0-4: bad/sat/interp/cosmic/edge)
+        flagged = (mask & 31) != 0
         good_pixels &= ~flagged
         logger.info(f"Excluding {np.sum(~good_pixels)} masked pixels from scaling")
 
@@ -523,16 +511,16 @@ def apply_mask_to_scaled_image(
 
     # Apply mask flags (following IDL prep_dp1_pim.pro)
     # Bit flags: 1=bad, 2=saturated, 4=interpolated, 8=cosmic ray, 16=edge
-    bad_pixels = (mask & 1) != 0      # Bad pixels
-    saturated = (mask & 2) != 0       # Saturated pixels
-    interpolated = (mask & 4) != 0    # Interpolated pixels
-    cosmic_ray = (mask & 8) != 0      # Cosmic rays
-    edge = (mask & 16) != 0           # Edge pixels
-
-    # Set any flagged pixel to sentinel (IDL sets all to -30000)
-    flagged = bad_pixels | saturated | interpolated | cosmic_ray | edge
+    flagged = (mask & 31) != 0
 
     image_masked[flagged] = sentinel_value
+
+    # Count individual flag types for logging
+    bad_pixels = (mask & 1) != 0
+    saturated = (mask & 2) != 0
+    interpolated = (mask & 4) != 0
+    cosmic_ray = (mask & 8) != 0
+    edge = (mask & 16) != 0
 
     num_flagged = np.sum(flagged)
     logger.info(f"Applied mask: {num_flagged} pixels flagged "
