@@ -127,6 +127,62 @@ def detect_units(header: dict[str, Any]) -> str:
         return 'DN'
 
 
+def _find_scaling_factor(
+    skyval: float,
+    readnoise: float,
+    max_signal: float,
+    units: str = 'DN'
+) -> tuple[float, int]:
+    """
+    Find optimal scaling factor so noise is sampled at 2+ integer counts.
+
+    Uses Abi's algorithm: iteratively halve maxsky until noise threshold
+    (in integer units) reaches 2+ counts.
+
+    Parameters
+    ----------
+    skyval : float
+        Sky value (in same units as image will be scaled)
+    readnoise : float
+        Read noise (in same units as image)
+    max_signal : float
+        Maximum signal value (in same units as image)
+    units : str
+        Unit type for logging ('DN' or 'nJy')
+
+    Returns
+    -------
+    epdn : float
+        Scale factor (units per int32)
+    mprec : int
+        Median precision (integer counts for noise)
+    """
+    noisethresh = np.sqrt(skyval + readnoise**2)
+
+    lpcnt = 0
+    maxsky = max_signal
+    while True:
+        if lpcnt > 0:
+            maxsky = maxsky / 2.0
+
+        r2 = max(maxsky / 32760.0, 1.0)
+        nt2 = noisethresh / r2
+
+        if nt2 >= 2.0:
+            epdn = r2
+            mprec = int(np.round(nt2))
+            logger.info(f"Found scaling: epdn={epdn:.4f}, mprec={mprec} "
+                       f"(noise={nt2:.2f} counts)")
+            return epdn, mprec
+
+        lpcnt += 1
+        if lpcnt > 20:
+            logger.warning("Scaling loop exceeded 20 iterations, using current epdn")
+            epdn = r2
+            mprec = max(2, int(np.round(nt2)))
+            return epdn, mprec
+
+
 def scale_dn_to_int32(
     image: np.ndarray,
     gain: float,
@@ -215,37 +271,12 @@ def scale_dn_to_int32(
                 f"noisethresh={noisethresh:.1f} e")
 
     # Find scaling factor using Abi's algorithm
-    # Loop to find minimum epdn (scale factor) such that noise is 2+ counts
-    # Use only unmasked pixels for maxsky
     if np.any(good_pixels):
         maxsky = np.max(image_e[good_pixels])
     else:
         maxsky = np.max(image_e)
-    lpcnt = 0
-    while True:
-        if lpcnt > 0:
-            maxsky = maxsky / 2.0
 
-        # r2 = max(maxsky/32760, 1.0)
-        # 32760 ≈ 2^15 - 8, used to fit scaled sky in ~16-bit range
-        r2 = max(maxsky / 32760.0, 1.0)
-
-        # nt2 = noisethresh / r2 = number of integer counts for noise
-        nt2 = noisethresh / r2
-
-        if nt2 >= 2.0:
-            epdn = r2
-            mprec = int(np.round(nt2))
-            logger.info(f"Found scaling: epdn={epdn:.4f}, mprec={mprec} "
-                       f"(noise={nt2:.2f} counts)")
-            break
-
-        lpcnt += 1
-        if lpcnt > 20:
-            logger.warning("Scaling loop exceeded 20 iterations, using current epdn")
-            epdn = r2
-            mprec = max(2, int(np.round(nt2)))
-            break
+    epdn, mprec = _find_scaling_factor(skyval, readnoise, maxsky, units='DN')
 
     # Calculate gain with scaling: fpdn = fpdn1 * epdn
     fpdn = (1.0 / gain) * epdn  # DN per electron (scaled)
@@ -332,8 +363,7 @@ def scale_njy_to_int32(
         else:
             readnoise_nJy = 1.0
 
-    # Calculate noise threshold: sqrt(sky + readnoise^2)
-    # Same formula as DN, but in nJy units
+    # Calculate noise threshold (needed for metadata and scaling)
     noisethresh = np.sqrt(skyval + readnoise_nJy**2)
 
     msg = (
@@ -343,36 +373,12 @@ def scale_njy_to_int32(
     logger.info(msg)
 
     # Find scaling factor using same algorithm as DN
-    # Use only unmasked pixels for maxsky
     if np.any(good_pixels):
         maxsky = np.max(image[good_pixels])
     else:
         maxsky = np.max(image)
-    lpcnt = 0
-    while True:
-        if lpcnt > 0:
-            maxsky = maxsky / 2.0
 
-        # r2 = max(maxsky/32760, 1.0)
-        # Scale so sky fits in ~16-bit range
-        r2 = max(maxsky / 32760.0, 1.0)
-
-        # nt2 = noisethresh / r2 = number of integer counts for noise
-        nt2 = noisethresh / r2
-
-        if nt2 >= 2.0:
-            epdn = r2
-            mprec = int(np.round(nt2))
-            logger.info(f"Found scaling: epdn={epdn:.4f}, mprec={mprec} "
-                       f"(noise={nt2:.2f} counts)")
-            break
-
-        lpcnt += 1
-        if lpcnt > 20:
-            logger.warning("Scaling loop exceeded 20 iterations, using current epdn")
-            epdn = r2
-            mprec = max(2, int(np.round(nt2)))
-            break
+    epdn, mprec = _find_scaling_factor(skyval, readnoise_nJy, maxsky, units='nJy')
 
     # Apply scaling
     image_scaled = image / epdn
