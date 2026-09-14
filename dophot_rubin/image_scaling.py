@@ -130,14 +130,14 @@ def detect_units(header: dict[str, Any]) -> str:
 def _find_scaling_factor(
     skyval: float,
     readnoise: float,
-    max_signal: float,
-    units: str = 'DN'
+    max_signal: float
 ) -> tuple[float, int]:
     """
     Find optimal scaling factor so noise is sampled at 2+ integer counts.
 
     Uses Abi's algorithm: iteratively halve maxsky until noise threshold
-    (in integer units) reaches 2+ counts.
+    (in integer units) reaches 2+ counts. Unit-agnostic—works for DN, nJy,
+    or any calibrated flux units.
 
     Parameters
     ----------
@@ -147,8 +147,6 @@ def _find_scaling_factor(
         Read noise (in same units as image)
     max_signal : float
         Maximum signal value (in same units as image)
-    units : str
-        Unit type for logging ('DN' or 'nJy')
 
     Returns
     -------
@@ -276,7 +274,7 @@ def scale_dn_to_int32(
     else:
         maxsky = np.max(image_e)
 
-    epdn, mprec = _find_scaling_factor(skyval, readnoise, maxsky, units='DN')
+    epdn, mprec = _find_scaling_factor(skyval, readnoise, maxsky)
 
     # Calculate gain with scaling: fpdn = fpdn1 * epdn
     fpdn = (1.0 / gain) * epdn  # DN per electron (scaled)
