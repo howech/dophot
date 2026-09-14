@@ -4,93 +4,11 @@ DoPHOT Configuration for Rubin Pipeline Task.
 Defines all configurable parameters for DoPHOT processing.
 """
 
-from typing import Any, Dict, Optional
-
-HAS_RUBIN_STACK = True
-
-try:
-    from lsst.pex import config as pexConfig
-except ImportError:
-    HAS_RUBIN_STACK = False
-    # Fallback for when Rubin Stack is not available
-    class _ConfigClass:
-        """Mock config class for development without Rubin Stack."""
-        def __init__(self) -> None:
-            self._config: Dict[str, Any] = {}
-
-        def __getattr__(self, name: str) -> Any:
-            if name.startswith('_'):
-                return object.__getattribute__(self, name)
-            return self._config.get(name)
-
-        def __setattr__(self, name: str, value: Any) -> None:
-            if name.startswith('_'):
-                object.__setattr__(self, name, value)
-            else:
-                if not hasattr(self, '_config'):
-                    object.__setattr__(self, '_config', {})
-                self._config[name] = value
-
-    class _MockField:
-        def __init__(self, **kw: Any) -> None:
-            self.dtype: Optional[Any] = kw.get('dtype')
-            self.default: Optional[Any] = kw.get('default')
-            self.doc: Optional[str] = kw.get('doc')
-
-    class _MockChoiceField(_MockField):
-        def __init__(self, **kw: Any) -> None:
-            super().__init__(**kw)
-            self.allowed: Dict[str, str] = kw.get('allowed', {})
-
-    class _pexConfig:
-        Config = _ConfigClass
-        Field = _MockField
-        RangeField = _MockField
-        ChoiceField = _MockChoiceField
-        ConfigurableField = _MockField
-
-    pexConfig = _pexConfig()
+from lsst.pex import config as pexConfig
 
 
-if HAS_RUBIN_STACK:
-    class DoPHOTConfig(pexConfig.Config):
-        """Configuration for DoPHOT photometry task (Rubin Stack version)."""
-        pass
-else:
-    class DoPHOTConfig:
-        """Configuration for DoPHOT photometry task (mock version for development)."""
-        def __init__(self) -> None:
-            """Initialize with default values."""
-            # Set all default values
-            self.psfDetectionThreshold: float = 10.0
-            self.psfMinStars: int = 20
-            self.psfBoxSize: int = 31
-            self.psfEdgeBuffer: int = 32
-            self.doPHOTExecPath: str = "dophot"
-            self.doPHOTWorkDir: str = "/tmp/dophot_work"
-            self.useEmpiricalModel: bool = True
-            self.psfModel: str = "PGAUSS"
-            self.skyEstimationMethod: str = "PERCENTILE"
-            self.maskBadPixels: bool = True
-            self.useVarianceMap: bool = True
-            self.doAperturePhotometry: bool = True
-            self.apertureRadius: float = 2.0
-            self.doApertureCorrection: bool = True
-            self.doWcsTransform: bool = True
-            self.doMagnitudeConversion: bool = True
-            self.minPsfSignalToNoise: float = 5.0
-            self.maxCentroidUncertainty: float = 1.0
-            self.minIterativeArea: float = 0.5
-            self.doDebug: bool = False
-            self.saveIntermediateFiles: bool = False
-            self.intermediateDir: str = "./dophot_intermediate"
-            self.logLevel: str = "INFO"
-
-
-# These are only added for Rubin Stack version
-if HAS_RUBIN_STACK:
-    class DoPHOTConfig(pexConfig.Config):
-        """Configuration for DoPHOT photometry task."""
+class DoPHOTConfig(pexConfig.Config):
+    """Configuration for DoPHOT photometry task."""
 
     # ============================================================
     # PSF Measurement Parameters
@@ -271,7 +189,7 @@ if HAS_RUBIN_STACK:
     )
 
 
-class DoPHOTTaskConnections(object):
+class DoPHOTTaskConnections:
     """
     Data connections for DoPHOT task (requires lsst.pipe.base).
 
