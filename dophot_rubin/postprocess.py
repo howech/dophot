@@ -4,8 +4,10 @@ Postprocessing for DoPHOT output.
 Handles aperture corrections, WCS transformation, and magnitude conversion.
 """
 
+from typing import Optional, Union
 import logging
 import numpy as np
+from astropy.table import Table
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 class DoPHOTPostprocessor:
     """Postprocess DoPHOT photometry output."""
 
-    def __init__(self, config):
+    def __init__(self, config: any) -> None:
         """
         Initialize postprocessor.
 
@@ -25,7 +27,13 @@ class DoPHOTPostprocessor:
         self.config = config
         self.log = logging.getLogger(__name__)
 
-    def run(self, catalog, calexp=None, psf=None, photoCalib=None):
+    def run(
+        self,
+        catalog: Table,
+        calexp: Optional[any] = None,
+        psf: Optional[any] = None,
+        photoCalib: Optional[any] = None
+    ) -> Table:
         """
         Run complete postprocessing pipeline.
 
@@ -77,7 +85,12 @@ class DoPHOTPostprocessor:
 
         return catalog_out
 
-    def _apply_aperture_corrections(self, catalog, calexp=None, psf=None):
+    def _apply_aperture_corrections(
+        self,
+        catalog: Table,
+        calexp: Optional[any] = None,
+        psf: Optional[any] = None
+    ) -> Table:
         """
         Apply aperture correction to convert aperture mag to total mag.
 
@@ -116,7 +129,7 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _apply_wcs_transform(self, catalog, calexp):
+    def _apply_wcs_transform(self, catalog: Table, calexp: any) -> Table:
         """
         Transform pixel coordinates to RA/Dec using WCS.
 
@@ -158,7 +171,7 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _apply_magnitude_conversion(self, catalog, photoCalib):
+    def _apply_magnitude_conversion(self, catalog: Table, photoCalib: any) -> Table:
         """
         Convert instrumental magnitudes to AB magnitudes.
 
@@ -200,7 +213,7 @@ class DoPHOTPostprocessor:
 
         return catalog
 
-    def _add_quality_flags(self, catalog):
+    def _add_quality_flags(self, catalog: Table) -> Table:
         """
         Add quality flags and selection criteria.
 
@@ -238,7 +251,7 @@ class DoPHOTPostprocessor:
         return catalog
 
 
-def create_source_catalog(table_data, config):
+def create_source_catalog(table_data: Table, config: any) -> any:
     """
     Convert postprocessed table to Rubin SourceCatalog format.
 
@@ -299,7 +312,12 @@ def create_source_catalog(table_data, config):
         return table_data
 
 
-def postprocess_dophot_output(catalog, calexp=None, photoCalib=None, config=None):
+def postprocess_dophot_output(
+    catalog: Union[Table, str],
+    calexp: Optional[any] = None,
+    photoCalib: Optional[any] = None,
+    config: Optional[any] = None
+) -> any:
     """
     Convenience function for full postprocessing.
 

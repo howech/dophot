@@ -4,6 +4,7 @@ DoPHOT PipelineTask for Rubin Observatory.
 Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 """
 
+from typing import Optional, Tuple, Dict, Any
 import logging
 import tempfile
 from pathlib import Path
@@ -17,7 +18,7 @@ except ImportError:
     HAS_RUBIN_STACK = False
     # Fallback for development
     class PipelineTask:
-        def __init__(self, config, name=None):
+        def __init__(self, config: Any, name: Optional[str] = None) -> None:
             self.config = config
             self.name = name or self.__class__.__name__
 
@@ -30,10 +31,10 @@ except ImportError:
     # Mock connectionTypes for development
     class MockConnectionTypes:
         class Input:
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
                 pass
         class Output:
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
                 pass
 
     cT = MockConnectionTypes()
@@ -123,7 +124,7 @@ class DoPHOTTask(PipelineTask):
     ConfigClass = DoPHOTConfig
     _DefaultName = "dophot"
 
-    def __init__(self, config, name=None, **kwargs):
+    def __init__(self, config: Any, name: Optional[str] = None, **kwargs: Any) -> None:
         """Initialize DoPHOT task."""
         super().__init__(config, name=name, **kwargs)
 
@@ -137,7 +138,7 @@ class DoPHOTTask(PipelineTask):
 
         self.log.info(f"DoPHOT task initialized. Working directory: {self.work_dir}")
 
-    def runQuantum(self, butlerQC, inputRefs, outputRefs):
+    def runQuantum(self, butlerQC: Any, inputRefs: Any, outputRefs: Any) -> None:
         """
         Execute DoPHOT photometry for a single visit/detector.
 
@@ -178,7 +179,7 @@ class DoPHOTTask(PipelineTask):
             self.log.error(f"DoPHOT failed: {e}")
             raise
 
-    def _preprocessing(self, calexp):
+    def _preprocessing(self, calexp: Any) -> Tuple[float, Dict[str, Any]]:
         """
         Measure PSF and generate DoPHOT parameters.
 
@@ -215,7 +216,7 @@ class DoPHOTTask(PipelineTask):
             self.log.info(f"✓ Preprocessing complete: sigma={sigma:.3f} pixels")
             return sigma, params
 
-    def _run_dophot(self, calexp, params):
+    def _run_dophot(self, calexp: Any, params: Dict[str, Any]) -> Tuple[Any, Dict[str, Any]]:
         """
         Execute DoPHOT photometry using IDL-style workflow.
 
@@ -380,7 +381,13 @@ class DoPHOTTask(PipelineTask):
                 traceback.print_exc()
                 return Table(), {}
 
-    def _postprocessing(self, calexp, catalog, photoCalib, conversion_factors=None):
+    def _postprocessing(
+        self,
+        calexp: Any,
+        catalog: Any,
+        photoCalib: Any,
+        conversion_factors: Optional[Dict[str, Any]] = None
+    ) -> Any:
         """
         Postprocess DoPHOT output.
 

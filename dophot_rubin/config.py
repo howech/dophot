@@ -4,6 +4,8 @@ DoPHOT Configuration for Rubin Pipeline Task.
 Defines all configurable parameters for DoPHOT processing.
 """
 
+from typing import Any, Dict, Optional
+
 HAS_RUBIN_STACK = True
 
 try:
@@ -13,15 +15,15 @@ except ImportError:
     # Fallback for when Rubin Stack is not available
     class _ConfigClass:
         """Mock config class for development without Rubin Stack."""
-        def __init__(self):
-            self._config = {}
+        def __init__(self) -> None:
+            self._config: Dict[str, Any] = {}
 
-        def __getattr__(self, name):
+        def __getattr__(self, name: str) -> Any:
             if name.startswith('_'):
                 return object.__getattribute__(self, name)
             return self._config.get(name)
 
-        def __setattr__(self, name, value):
+        def __setattr__(self, name: str, value: Any) -> None:
             if name.startswith('_'):
                 object.__setattr__(self, name, value)
             else:
@@ -30,15 +32,15 @@ except ImportError:
                 self._config[name] = value
 
     class _MockField:
-        def __init__(self, **kw):
-            self.dtype = kw.get('dtype')
-            self.default = kw.get('default')
-            self.doc = kw.get('doc')
+        def __init__(self, **kw: Any) -> None:
+            self.dtype: Optional[Any] = kw.get('dtype')
+            self.default: Optional[Any] = kw.get('default')
+            self.doc: Optional[str] = kw.get('doc')
 
     class _MockChoiceField(_MockField):
-        def __init__(self, **kw):
+        def __init__(self, **kw: Any) -> None:
             super().__init__(**kw)
-            self.allowed = kw.get('allowed', {})
+            self.allowed: Dict[str, str] = kw.get('allowed', {})
 
     class _pexConfig:
         Config = _ConfigClass
@@ -57,32 +59,32 @@ if HAS_RUBIN_STACK:
 else:
     class DoPHOTConfig:
         """Configuration for DoPHOT photometry task (mock version for development)."""
-        def __init__(self):
+        def __init__(self) -> None:
             """Initialize with default values."""
             # Set all default values
-            self.psfDetectionThreshold = 10.0
-            self.psfMinStars = 20
-            self.psfBoxSize = 31
-            self.psfEdgeBuffer = 32
-            self.doPHOTExecPath = "dophot"
-            self.doPHOTWorkDir = "/tmp/dophot_work"
-            self.useEmpiricalModel = True
-            self.psfModel = "PGAUSS"
-            self.skyEstimationMethod = "PERCENTILE"
-            self.maskBadPixels = True
-            self.useVarianceMap = True
-            self.doAperturePhotometry = True
-            self.apertureRadius = 2.0
-            self.doApertureCorrection = True
-            self.doWcsTransform = True
-            self.doMagnitudeConversion = True
-            self.minPsfSignalToNoise = 5.0
-            self.maxCentroidUncertainty = 1.0
-            self.minIterativeArea = 0.5
-            self.doDebug = False
-            self.saveIntermediateFiles = False
-            self.intermediateDir = "./dophot_intermediate"
-            self.logLevel = "INFO"
+            self.psfDetectionThreshold: float = 10.0
+            self.psfMinStars: int = 20
+            self.psfBoxSize: int = 31
+            self.psfEdgeBuffer: int = 32
+            self.doPHOTExecPath: str = "dophot"
+            self.doPHOTWorkDir: str = "/tmp/dophot_work"
+            self.useEmpiricalModel: bool = True
+            self.psfModel: str = "PGAUSS"
+            self.skyEstimationMethod: str = "PERCENTILE"
+            self.maskBadPixels: bool = True
+            self.useVarianceMap: bool = True
+            self.doAperturePhotometry: bool = True
+            self.apertureRadius: float = 2.0
+            self.doApertureCorrection: bool = True
+            self.doWcsTransform: bool = True
+            self.doMagnitudeConversion: bool = True
+            self.minPsfSignalToNoise: float = 5.0
+            self.maxCentroidUncertainty: float = 1.0
+            self.minIterativeArea: float = 0.5
+            self.doDebug: bool = False
+            self.saveIntermediateFiles: bool = False
+            self.intermediateDir: str = "./dophot_intermediate"
+            self.logLevel: str = "INFO"
 
 
 # These are only added for Rubin Stack version

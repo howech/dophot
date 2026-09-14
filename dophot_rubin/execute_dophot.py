@@ -4,6 +4,7 @@ DoPHOT C library execution wrapper.
 Handles calling the compiled DoPHOT C code with generated parameter files.
 """
 
+from typing import Optional, Union
 import logging
 import subprocess
 from pathlib import Path
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class DoPHOTExecutor:
     """Wrapper for executing DoPHOT C code."""
 
-    def __init__(self, config):
+    def __init__(self, config: any) -> None:
         """
         Initialize executor.
 
@@ -31,7 +32,7 @@ class DoPHOTExecutor:
         # Verify executable exists
         self._verify_executable()
 
-    def _verify_executable(self):
+    def _verify_executable(self) -> None:
         """Verify DoPHOT executable is available."""
         exec_path = Path(self.config.doPHOTExecPath)
 
@@ -45,7 +46,12 @@ class DoPHOTExecutor:
                 exec_name = self.config.doPHOTExecPath
                 self.log.warning(f"DoPHOT executable not in PATH: {exec_name}")
 
-    def run(self, image_path, param_file, output_dir=None):
+    def run(
+        self,
+        image_path: Union[str, Path],
+        param_file: Union[str, Path],
+        output_dir: Optional[Union[str, Path]] = None
+    ) -> Table:
         """
         Execute DoPHOT on an image.
 
@@ -121,7 +127,7 @@ class DoPHOTExecutor:
             self.log.error(f"DoPHOT execution failed: {e}")
             raise
 
-    def _parse_output(self, output_dir):
+    def _parse_output(self, output_dir: Union[str, Path]) -> Table:
         """
         Parse DoPHOT output catalog.
 
@@ -167,7 +173,12 @@ class DoPHOTExecutor:
             raise
 
 
-def execute_dophot(image_path, param_file, config, output_dir=None):
+def execute_dophot(
+    image_path: Union[str, Path],
+    param_file: Union[str, Path],
+    config: any,
+    output_dir: Optional[Union[str, Path]] = None
+) -> Table:
     """
     Convenience function to execute DoPHOT.
 

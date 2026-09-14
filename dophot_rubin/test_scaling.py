@@ -5,6 +5,7 @@ Test script for DoPHOT image scaling workflow.
 Tests the complete preprocessing pipeline on 47Tuc FITS file.
 """
 
+from typing import Optional, Tuple, Dict, Any
 import numpy as np
 from pathlib import Path
 from astropy.io import fits

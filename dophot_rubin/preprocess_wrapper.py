@@ -5,6 +5,7 @@ Integrates PSF measurement and parameter generation from dophot_preprocess
 into the Rubin PipelineTask context.
 """
 
+from typing import Optional, Tuple, Dict, Any, Union
 import logging
 import numpy as np
 import tempfile
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class DoPHOTPreprocessor:
     """Wrapper for PSF measurement and parameter generation."""
 
-    def __init__(self, config):
+    def __init__(self, config: any) -> None:
         """
         Initialize preprocessor.
 
@@ -28,7 +29,14 @@ class DoPHOTPreprocessor:
         self.config = config
         self.log = logging.getLogger(__name__)
 
-    def run(self, image, variance=None, mask=None, header=None, work_dir=None):
+    def run(
+        self,
+        image: np.ndarray,
+        variance: Optional[np.ndarray] = None,
+        mask: Optional[np.ndarray] = None,
+        header: Optional[any] = None,
+        work_dir: Optional[Union[str, Path]] = None
+    ) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
         """
         Run complete preprocessing pipeline.
 
@@ -106,7 +114,7 @@ class DoPHOTPreprocessor:
 
         return sigma, params, metadata
 
-    def _extract_image_stats(self, header, image):
+    def _extract_image_stats(self, header: Optional[any], image: np.ndarray) -> Dict[str, float]:
         """
         Extract image statistics from FITS header or image data.
 
@@ -156,7 +164,7 @@ class DoPHOTPreprocessor:
 
         return stats
 
-    def _measure_psf(self, image, image_stats):
+    def _measure_psf(self, image: np.ndarray, image_stats: Dict[str, float]) -> Tuple[float, int, bool]:
         """
         Measure PSF sigma from bright stars.
 
@@ -238,7 +246,7 @@ class DoPHOTPreprocessor:
         sigma = float(np.median(sigmas))
         return sigma, n_stars, True
 
-    def _write_param_file(self, params, work_dir=None):
+    def _write_param_file(self, params: Dict[str, Any], work_dir: Optional[Union[str, Path]] = None) -> Path:
         """
         Write DoPHOT parameter file.
 
@@ -280,7 +288,7 @@ class DoPHOTPreprocessor:
 class PreprocessingContext:
     """Context manager for temporary preprocessing files."""
 
-    def __init__(self, work_dir=None):
+    def __init__(self, work_dir: Optional[Union[str, Path]] = None) -> None:
         """Initialize context."""
         if work_dir is None:
             self.temp_dir = tempfile.TemporaryDirectory()
@@ -290,17 +298,21 @@ class PreprocessingContext:
             self.work_dir.mkdir(parents=True, exist_ok=True)
             self.temp_dir = None
 
-    def __enter__(self):
+    def __enter__(self) -> Path:
         """Enter context."""
         return self.work_dir
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         """Exit context and clean up."""
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
 
 
-def preprocess_calexp(calexp, config, work_dir=None):
+def preprocess_calexp(
+    calexp: any,
+    config: any,
+    work_dir: Optional[Union[str, Path]] = None
+) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
     """
     Convenience function to preprocess a Rubin calexp.
 
