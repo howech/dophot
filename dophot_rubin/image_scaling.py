@@ -6,13 +6,18 @@ conversion factor tracking, following the IDL DoPHOT workflow.
 """
 
 import logging
+from typing import Optional, Tuple, Dict, Any
 import numpy as np
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-def calculate_sky_gain(image, variance, mask=None):
+def calculate_sky_gain(
+    image: np.ndarray,
+    variance: np.ndarray,
+    mask: Optional[np.ndarray] = None
+) -> Tuple[float, float, float, bool]:
     """
     Calculate sky level and gain from image and variance arrays.
 
@@ -86,7 +91,7 @@ def calculate_sky_gain(image, variance, mask=None):
     return sky, gain, fpdn, sky_subtracted
 
 
-def detect_units(header):
+def detect_units(header: Dict[str, Any]) -> str:
     """
     Detect image units from FITS header.
 
@@ -114,7 +119,16 @@ def detect_units(header):
         return 'DN'
 
 
-def scale_dn_to_int32(image, gain, readnoise, saturation, header=None, mask=None, sky=None, sky_subtracted=False):
+def scale_dn_to_int32(
+    image: np.ndarray,
+    gain: float,
+    readnoise: float,
+    saturation: float,
+    header: Optional[Dict[str, Any]] = None,
+    mask: Optional[np.ndarray] = None,
+    sky: Optional[float] = None,
+    sky_subtracted: bool = False
+) -> Tuple[np.ndarray, float, Dict[str, Any]]:
     """
     Scale DN image to I*4 (int32) with proper noise digitization.
 
@@ -261,7 +275,11 @@ def scale_dn_to_int32(image, gain, readnoise, saturation, header=None, mask=None
     return image_int32, conversion_factor, metadata
 
 
-def scale_njy_to_int32(image, readnoise_nJy=None, mask=None):
+def scale_njy_to_int32(
+    image: np.ndarray,
+    readnoise_nJy: Optional[float] = None,
+    mask: Optional[np.ndarray] = None
+) -> Tuple[np.ndarray, float, Dict[str, Any]]:
     """
     Scale nJy image to I*4 (int32) with proper noise digitization.
 
@@ -380,7 +398,16 @@ def scale_njy_to_int32(image, readnoise_nJy=None, mask=None):
     return image_int32, conversion_factor, metadata
 
 
-def scale_image_to_int32(image, units, header=None, gain=None, readnoise=None, saturation=None, mask=None, variance=None):
+def scale_image_to_int32(
+    image: np.ndarray,
+    units: str,
+    header: Optional[Dict[str, Any]] = None,
+    gain: Optional[float] = None,
+    readnoise: Optional[float] = None,
+    saturation: Optional[float] = None,
+    mask: Optional[np.ndarray] = None,
+    variance: Optional[np.ndarray] = None
+) -> Tuple[np.ndarray, float, Dict[str, Any]]:
     """
     Scale image to int32 intermediate representation.
 
@@ -452,7 +479,11 @@ def scale_image_to_int32(image, units, header=None, gain=None, readnoise=None, s
         raise ValueError(f"Unknown units: {units}")
 
 
-def apply_mask_to_scaled_image(image_int32, mask, sentinel_value=-30000):
+def apply_mask_to_scaled_image(
+    image_int32: np.ndarray,
+    mask: np.ndarray,
+    sentinel_value: int = -30000
+) -> np.ndarray:
     """
     Apply mask to scaled int32 image.
 
@@ -499,7 +530,11 @@ def apply_mask_to_scaled_image(image_int32, mask, sentinel_value=-30000):
     return image_masked
 
 
-def unscale_int32_to_units(image_int32, conversion_factor, units):
+def unscale_int32_to_units(
+    image_int32: np.ndarray,
+    conversion_factor: float,
+    units: str
+) -> np.ndarray:
     """
     Convert int32 image back to original units using conversion factor.
 

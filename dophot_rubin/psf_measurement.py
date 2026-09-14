@@ -7,13 +7,18 @@ Follows Abi's IDL prep_dp1_pim.pro approach:
 3. Append PSF to image for DoPHOT input
 """
 
+from typing import Optional, Tuple, Dict, Any
 import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def measure_psf_simple(image, mask=None, verbose=False):
+def measure_psf_simple(
+    image: np.ndarray,
+    mask: Optional[np.ndarray] = None,
+    verbose: bool = False
+) -> Tuple[float, float, float, float]:
     """
     Measure PSF from image using bright stars.
 
@@ -116,9 +121,23 @@ def measure_psf_simple(image, mask=None, verbose=False):
     return sigma, beta4, beta6, beta8
 
 
-def generate_parameter_file(output_path, sigma, beta4, beta6, beta8,
-                           skyval, epdn, fpdn, gain, saturation, mprec,
-                           image_shape, mask=None, image_file=None, verbose=False):
+def generate_parameter_file(
+    output_path: str,
+    sigma: float,
+    beta4: float,
+    beta6: float,
+    beta8: float,
+    skyval: float,
+    epdn: float,
+    fpdn: float,
+    gain: float,
+    saturation: float,
+    mprec: int,
+    image_shape: Tuple[int, int],
+    mask: Optional[np.ndarray] = None,
+    image_file: Optional[str] = None,
+    verbose: bool = False
+) -> Dict[str, Any]:
     """
     Generate DoPHOT parameter file (DoPHOT-compatible format).
 
@@ -273,7 +292,11 @@ def generate_parameter_file(output_path, sigma, beta4, beta6, beta8,
     return params
 
 
-def append_psf_to_image(image, psf_image, max_iterations=5):
+def append_psf_to_image(
+    image: np.ndarray,
+    psf_image: np.ndarray,
+    max_iterations: int = 5
+) -> Tuple[np.ndarray, float, float, int]:
     """
     Append PSF strip to bottom of image, matching borders.
 
