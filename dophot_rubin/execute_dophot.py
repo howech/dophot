@@ -7,7 +7,6 @@ Handles calling the compiled DoPHOT C code with generated parameter files.
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional, Union
 
 from astropy.io import ascii
 from astropy.table import Table
@@ -54,9 +53,9 @@ class DoPHOTExecutor:
 
     def run(
         self,
-        image_path: Union[str, Path],
-        param_file: Union[str, Path],
-        output_dir: Optional[Union[str, Path]] = None
+        image_path: str | Path,
+        param_file: str | Path,
+        output_dir: str | Path | None = None
     ) -> Table:
         """
         Execute DoPHOT on an image.
@@ -109,7 +108,8 @@ class DoPHOTExecutor:
                 cwd=str(output_dir),
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
+                check=False
             )
 
             if result.returncode != 0:
@@ -135,7 +135,7 @@ class DoPHOTExecutor:
             self.log.error(f"DoPHOT execution failed: {e}")
             raise
 
-    def _parse_output(self, output_dir: Union[str, Path]) -> Table:
+    def _parse_output(self, output_dir: str | Path) -> Table:
         """
         Parse DoPHOT output catalog.
 
@@ -182,10 +182,10 @@ class DoPHOTExecutor:
 
 
 def execute_dophot(
-    image_path: Union[str, Path],
-    param_file: Union[str, Path],
+    image_path: str | Path,
+    param_file: str | Path,
     config: DoPHOTConfig,
-    output_dir: Optional[Union[str, Path]] = None
+    output_dir: str | Path | None = None
 ) -> Table:
     """
     Convenience function to execute DoPHOT.

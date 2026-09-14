@@ -6,7 +6,7 @@ conversion factor tracking, following the IDL DoPHOT workflow.
 """
 
 import logging
-from typing import Any, Dict, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -20,15 +20,15 @@ class ScaleMetadata(NamedTuple):
     readnoise: float
     skyval: float
     noisethresh: float
-    gain: Optional[float] = None
-    gain_scaled: Optional[float] = None
+    gain: float | None = None
+    gain_scaled: float | None = None
 
 
 def calculate_sky_gain(
     image: np.ndarray,
     variance: np.ndarray,
-    mask: Optional[np.ndarray] = None
-) -> Tuple[float, float, float, bool]:
+    mask: np.ndarray | None = None
+) -> tuple[float, float, float, bool]:
     """
     Calculate sky level and gain from image and variance arrays.
 
@@ -102,7 +102,7 @@ def calculate_sky_gain(
     return sky, gain, fpdn, sky_subtracted
 
 
-def detect_units(header: Dict[str, Any]) -> str:
+def detect_units(header: dict[str, Any]) -> str:
     """
     Detect image units from FITS header.
 
@@ -116,10 +116,7 @@ def detect_units(header: Dict[str, Any]) -> str:
     units : str
         'DN' or 'nJy'
     """
-    if hasattr(header, 'get'):
-        bunit = header.get('BUNIT', '').strip().upper()
-    else:
-        bunit = str(header.get('BUNIT', '')).strip().upper()
+    bunit = str(header.get('BUNIT', '')).strip().upper()
 
     if 'NJY' in bunit:
         return 'nJy'
@@ -135,11 +132,11 @@ def scale_dn_to_int32(
     gain: float,
     readnoise: float,
     saturation: float,
-    header: Optional[Dict[str, Any]] = None,
-    mask: Optional[np.ndarray] = None,
-    sky: Optional[float] = None,
+    header: dict[str, Any] | None = None,
+    mask: np.ndarray | None = None,
+    sky: float | None = None,
     sky_subtracted: bool = False
-) -> Tuple[np.ndarray, float, ScaleMetadata]:
+) -> tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale DN image to I*4 (int32) with proper noise digitization.
 
@@ -289,9 +286,9 @@ def scale_dn_to_int32(
 
 def scale_njy_to_int32(
     image: np.ndarray,
-    readnoise_nJy: Optional[float] = None,
-    mask: Optional[np.ndarray] = None
-) -> Tuple[np.ndarray, float, ScaleMetadata]:
+    readnoise_nJy: float | None = None,
+    mask: np.ndarray | None = None
+) -> tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale nJy image to I*4 (int32) with proper noise digitization.
 
@@ -416,13 +413,13 @@ def scale_njy_to_int32(
 def scale_image_to_int32(
     image: np.ndarray,
     units: str,
-    header: Optional[Dict[str, Any]] = None,
-    gain: Optional[float] = None,
-    readnoise: Optional[float] = None,
-    saturation: Optional[float] = None,
-    mask: Optional[np.ndarray] = None,
-    variance: Optional[np.ndarray] = None
-) -> Tuple[np.ndarray, float, ScaleMetadata]:
+    header: dict[str, Any] | None = None,
+    gain: float | None = None,
+    readnoise: float | None = None,
+    saturation: float | None = None,
+    mask: np.ndarray | None = None,
+    variance: np.ndarray | None = None
+) -> tuple[np.ndarray, float, ScaleMetadata]:
     """
     Scale image to int32 intermediate representation.
 
@@ -462,7 +459,7 @@ def scale_image_to_int32(
     sky_val = None
     sky_sub = False
     if variance is not None and units == 'DN':
-        sky_val, gain_from_var, fpdn_from_var, sky_sub = calculate_sky_gain(
+        sky_val, gain_from_var, _, sky_sub = calculate_sky_gain(
             image, variance, mask=mask
         )
         if gain is None:

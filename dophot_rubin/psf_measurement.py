@@ -8,7 +8,7 @@ Follows Abi's IDL prep_dp1_pim.pro approach:
 """
 
 import logging
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
 
 import numpy as np
 
@@ -41,9 +41,9 @@ class PSFParameters(NamedTuple):
 
 def measure_psf_simple(
     image: np.ndarray,
-    mask: Optional[np.ndarray] = None,
+    mask: np.ndarray | None = None,
     verbose: bool = False
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """
     Measure PSF from image using bright stars.
 
@@ -126,7 +126,7 @@ def measure_psf_simple(
             sigma = radius / 1.177  # Convert FWHM to sigma
             if 0.5 < sigma < 10:  # Reasonable range
                 sigmas.append(sigma)
-        except Exception:
+        except ValueError:
             continue
 
     if len(sigmas) == 0:
@@ -158,9 +158,9 @@ def generate_parameter_file(
     gain: float,
     saturation: float,
     mprec: int,
-    image_shape: Tuple[int, int],
-    mask: Optional[np.ndarray] = None,
-    image_file: Optional[str] = None,
+    image_shape: tuple[int, int],
+    mask: np.ndarray | None = None,
+    image_file: str | None = None,
     verbose: bool = False
 ) -> PSFParameters:
     """
@@ -323,7 +323,7 @@ def append_psf_to_image(
     image: np.ndarray,
     psf_image: np.ndarray,
     max_iterations: int = 5
-) -> Tuple[np.ndarray, float, float, int]:
+) -> tuple[np.ndarray, float, float, int]:
     """
     Append PSF strip to bottom of image, matching borders.
 

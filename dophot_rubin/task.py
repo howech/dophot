@@ -7,7 +7,7 @@ Orchestrates PSF-based photometry using DoPHOT on calibrated visit images.
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from .config import DoPHOTConfig
 from .execute_dophot import DoPHOTExecutor
@@ -43,7 +43,7 @@ except ImportError:
     HAS_RUBIN_STACK = False
     # Fallback for development
     class PipelineTask:
-        def __init__(self, config: DoPHOTConfig, name: Optional[str] = None) -> None:
+        def __init__(self, config: DoPHOTConfig, name: str | None = None) -> None:
             self.config = config
             self.name = name or self.__class__.__name__
 
@@ -111,7 +111,6 @@ class DoPHOTOutputConnections(PipelineTaskConnections):
 
 class DoPHOTConnections(DoPHOTInputConnections, DoPHOTOutputConnections):
     """Full connections for DoPHOT task."""
-    pass
 
 
 class DoPHOTTask(PipelineTask):
@@ -146,7 +145,7 @@ class DoPHOTTask(PipelineTask):
     def __init__(
         self,
         config: DoPHOTConfig,
-        name: Optional[str] = None,
+        name: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize DoPHOT task."""
@@ -186,7 +185,7 @@ class DoPHOTTask(PipelineTask):
             photoCalib = butlerQC.get(inputRefs.photoCalib)
 
             # Run preprocessing
-            sigma, params = self._preprocessing(calexp)
+            _, params = self._preprocessing(calexp)
 
             # Run DoPHOT
             catalog, conversion_factors = self._run_dophot(calexp, params)
@@ -203,7 +202,7 @@ class DoPHOTTask(PipelineTask):
             self.log.error(f"DoPHOT failed: {e}")
             raise
 
-    def _preprocessing(self, calexp: "ExposureF") -> Tuple[float, Dict[str, Any]]:
+    def _preprocessing(self, calexp: "ExposureF") -> tuple[float, dict[str, Any]]:
         """
         Measure PSF and generate DoPHOT parameters.
 
@@ -229,7 +228,7 @@ class DoPHOTTask(PipelineTask):
             header = calexp.getMetadata()
 
             # Run preprocessing
-            sigma, params, metadata = preprocessor.run(
+            sigma, params, _ = preprocessor.run(
                 image=image,
                 variance=variance,
                 mask=mask,
@@ -244,7 +243,7 @@ class DoPHOTTask(PipelineTask):
         self,
         calexp: "ExposureF",
         params: Any,
-    ) -> Tuple[Any, ConversionFactors]:
+    ) -> tuple[Any, ConversionFactors]:
         """
         Execute DoPHOT photometry using IDL-style workflow.
 
@@ -414,7 +413,7 @@ class DoPHOTTask(PipelineTask):
 
                 return catalog, conversion_factors
 
-            except Exception as e:
+            except (ValueError, RuntimeError, FileNotFoundError) as e:
                 self.log.error(f"DoPHOT execution failed: {e}")
                 import traceback
                 traceback.print_exc()
@@ -429,7 +428,7 @@ class DoPHOTTask(PipelineTask):
         calexp: "ExposureF",
         catalog: Any,
         photoCalib: "PhotoCalib",
-        conversion_factors: Optional[ConversionFactors] = None
+        conversion_factors: ConversionFactors | None = None
     ) -> Any:
         """
         Postprocess DoPHOT output.

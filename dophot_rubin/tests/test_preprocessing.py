@@ -83,7 +83,7 @@ class TestDoPHOTPreprocessor(unittest.TestCase):
             'rdnoise': 10.0
         }
 
-        sigma, n_stars, success = self.preprocessor._measure_psf(image, stats)
+        _, n_stars, success = self.preprocessor._measure_psf(image, stats)
 
         # Should fail due to no stars detected
         self.assertFalse(success)
@@ -104,7 +104,7 @@ class TestDoPHOTPreprocessor(unittest.TestCase):
             'rdnoise': 10.0
         }
 
-        sigma, n_stars, success = self.preprocessor._measure_psf(image, stats)
+        _, n_stars, success = self.preprocessor._measure_psf(image, stats)
 
         # Should fail if fewer than psfMinStars
         if n_stars < self.config.psfMinStars:
@@ -128,10 +128,11 @@ class TestPreprocessingContext(unittest.TestCase):
 
         from dophot_rubin.preprocess_wrapper import PreprocessingContext
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with PreprocessingContext(tmpdir) as work_dir:
-                self.assertEqual(work_dir, Path(tmpdir))
-                self.assertTrue(work_dir.exists())
+        with tempfile.TemporaryDirectory() as tmpdir, PreprocessingContext(
+            tmpdir
+        ) as work_dir:
+            self.assertEqual(work_dir, Path(tmpdir))
+            self.assertTrue(work_dir.exists())
 
 
 if __name__ == '__main__':

@@ -1,10 +1,10 @@
-#!/usr/bin/env python
 """
 Test script for DoPHOT image scaling workflow.
 
 Tests the complete preprocessing pipeline on 47Tuc FITS file.
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -21,7 +21,7 @@ base_path = Path("/home/chris/projects/astro/Sahas_CDoPhot")
 test_file = base_path / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
 if not test_file.exists():
     print(f"ERROR: Test file not found: {test_file}")
-    exit(1)
+    sys.exit(1)
 
 fits_file = test_file
 print(f"\n{'='*70}")

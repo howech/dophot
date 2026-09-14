@@ -8,7 +8,7 @@ into the Rubin PipelineTask context.
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, NamedTuple, Optional, Tuple, Union
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -62,10 +62,10 @@ class DoPHOTPreprocessor:
     def run(
         self,
         image: np.ndarray,
-        variance: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
-        header: Optional[Dict[str, Any]] = None,
-        work_dir: Optional[Union[str, Path]] = None
+        variance: np.ndarray | None = None,
+        mask: np.ndarray | None = None,
+        header: dict[str, Any] | None = None,
+        work_dir: str | Path | None = None
     ) -> PreprocessingResult:
         """
         Run complete preprocessing pipeline.
@@ -150,7 +150,7 @@ class DoPHOTPreprocessor:
 
     def _extract_image_stats(
         self,
-        header: Optional[Dict[str, Any]],
+        header: dict[str, Any] | None,
         image: np.ndarray,
     ) -> ImageStats:
         """
@@ -214,7 +214,7 @@ class DoPHOTPreprocessor:
         self,
         image: np.ndarray,
         image_stats: ImageStats,
-    ) -> Tuple[float, int, bool]:
+    ) -> tuple[float, int, bool]:
         """
         Measure PSF sigma from bright stars.
 
@@ -253,7 +253,7 @@ class DoPHOTPreprocessor:
         with tempfile.NamedTemporaryFile(suffix='.fits', delete=False) as tmp:
             fits_io.writeto(tmp.name, image, overwrite=True)
             try:
-                x, y, intensity = detect_bright_stars(
+                x, y, _ = detect_bright_stars(
                     image,
                     threshold=threshold,
                     saturation=image_stats['saturation'],
@@ -277,7 +277,7 @@ class DoPHOTPreprocessor:
         # Measure PSF on each star
         sigmas = []
         for i, (xi, yi) in enumerate(zip(x, y)):
-            sigma, amp, success = measure_psf_sigma(
+            sigma, _, success = measure_psf_sigma(
                 image, xi, yi,
                 box_size=self.config.psfBoxSize,
                 debug=(i < 3 and self.config.doDebug)
@@ -300,8 +300,8 @@ class DoPHOTPreprocessor:
 
     def _write_param_file(
         self,
-        params: Dict[str, Any],
-        work_dir: Optional[Union[str, Path]] = None,
+        params: dict[str, Any],
+        work_dir: str | Path | None = None,
     ) -> Path:
         """
         Write DoPHOT parameter file.
@@ -344,7 +344,7 @@ class DoPHOTPreprocessor:
 class PreprocessingContext:
     """Context manager for temporary preprocessing files."""
 
-    def __init__(self, work_dir: Optional[Union[str, Path]] = None) -> None:
+    def __init__(self, work_dir: str | Path | None = None) -> None:
         """Initialize context."""
         if work_dir is None:
             self.temp_dir = tempfile.TemporaryDirectory()
@@ -358,7 +358,7 @@ class PreprocessingContext:
         """Enter context."""
         return self.work_dir
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         """Exit context and clean up."""
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
@@ -367,7 +367,7 @@ class PreprocessingContext:
 def preprocess_calexp(
     calexp: Any,
     config: DoPHOTConfig,
-    work_dir: Optional[Union[str, Path]] = None
+    work_dir: str | Path | None = None
 ) -> PreprocessingResult:
     """
     Convenience function to preprocess a Rubin calexp.

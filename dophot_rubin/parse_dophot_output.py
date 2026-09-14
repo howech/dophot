@@ -3,13 +3,13 @@ Parse DoPHOT output catalog and convert back to original units.
 """
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 from astropy.table import Table
 
 
-def parse_obj_out(filepath: str) -> Dict[str, Any]:
+def parse_obj_out(filepath: str) -> dict[str, Any]:
     """
     Parse DoPHOT obj_out file format.
 
@@ -45,7 +45,7 @@ def parse_obj_out(filepath: str) -> Dict[str, Any]:
 
 
 def convert_to_original_units(
-    sources: Dict[str, Any],
+    sources: dict[str, Any],
     conversion_factor: float,
     original_units: str = 'DN'
 ) -> Table:
@@ -99,7 +99,7 @@ def validate_photometry(
     catalog_original: Table,
     conversion_factor: float,
     tolerance: float = 0.01
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate round-trip conversion: DN -> int32 -> DN.
 

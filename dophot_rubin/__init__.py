@@ -28,12 +28,12 @@ from .task import DoPHOTConnections, DoPHOTTask
 __version__ = '0.1.0'
 __all__ = [
     'DoPHOTConfig',
-    'DoPHOTTask',
     'DoPHOTConnections',
-    'DoPHOTPreprocessor',
-    'PreprocessingContext',
-    'DoPHOTPostprocessor',
-    'create_source_catalog',
     'DoPHOTExecutor',
+    'DoPHOTPostprocessor',
+    'DoPHOTPreprocessor',
+    'DoPHOTTask',
+    'PreprocessingContext',
+    'create_source_catalog',
     'execute_dophot',
 ]

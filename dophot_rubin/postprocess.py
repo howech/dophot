@@ -222,7 +222,7 @@ class DoPHOTPostprocessor:
 
             self.log.debug(f"Converted {len(catalog)} magnitudes to AB")
 
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
             self.log.error(f"Magnitude conversion failed: {e}")
             catalog['mag_AB'] = catalog['psfMag']
 
@@ -319,7 +319,7 @@ def create_source_catalog(
                 if col in table_data.colnames:
                     try:
                         row[col] = data_row[col]
-                    except Exception as e:
+                    except (ValueError, TypeError, KeyError) as e:
                         logger.debug(f"Could not copy {col}: {e}")
 
         return catalog
@@ -331,10 +331,10 @@ def create_source_catalog(
 
 
 def postprocess_dophot_output(
-    catalog: Union[Table, str],
+    catalog: Table | str,
     calexp: Optional["ExposureF"] = None,
     photoCalib: Optional["PhotoCalib"] = None,
-    config: Optional[DoPHOTConfig] = None
+    config: DoPHOTConfig | None = None
 ) -> Union[Table, "SourceCatalog"]:
     """
     Convenience function for full postprocessing.
