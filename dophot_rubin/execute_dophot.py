@@ -4,15 +4,13 @@ DoPHOT C library execution wrapper.
 Handles calling the compiled DoPHOT C code with generated parameter files.
 """
 
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union
 import logging
 import subprocess
 from pathlib import Path
 from astropy.io import ascii
 from astropy.table import Table
-
-if TYPE_CHECKING:
-    from .config import DoPHOTConfig
+from .config import DoPHOTConfig
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,9 @@ logger = logging.getLogger(__name__)
 class DoPHOTExecutor:
     """Wrapper for executing DoPHOT C code."""
 
-    def __init__(self, config: "DoPHOTConfig") -> None:
+    config: DoPHOTConfig
+
+    def __init__(self, config: DoPHOTConfig) -> None:
         """
         Initialize executor.
 
@@ -179,7 +179,7 @@ class DoPHOTExecutor:
 def execute_dophot(
     image_path: Union[str, Path],
     param_file: Union[str, Path],
-    config: "DoPHOTConfig",
+    config: DoPHOTConfig,
     output_dir: Optional[Union[str, Path]] = None
 ) -> Table:
     """

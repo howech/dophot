@@ -10,9 +10,7 @@ import logging
 import numpy as np
 import tempfile
 from pathlib import Path
-
-if TYPE_CHECKING:
-    from .config import DoPHOTConfig
+from .config import DoPHOTConfig
 
 
 class ImageStats(NamedTuple):
@@ -44,7 +42,9 @@ logger = logging.getLogger(__name__)
 class DoPHOTPreprocessor:
     """Wrapper for PSF measurement and parameter generation."""
 
-    def __init__(self, config: "DoPHOTConfig") -> None:
+    config: DoPHOTConfig
+
+    def __init__(self, config: DoPHOTConfig) -> None:
         """
         Initialize preprocessor.
 
@@ -349,7 +349,7 @@ class PreprocessingContext:
 
 def preprocess_calexp(
     calexp: Any,
-    config: "DoPHOTConfig",
+    config: DoPHOTConfig,
     work_dir: Optional[Union[str, Path]] = None
 ) -> PreprocessingResult:
     """

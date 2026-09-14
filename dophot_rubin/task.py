@@ -8,9 +8,9 @@ from typing import Optional, Tuple, Dict, Any, TYPE_CHECKING, NamedTuple
 import logging
 import tempfile
 from pathlib import Path
+from .config import DoPHOTConfig
 
 if TYPE_CHECKING:
-    from .config import DoPHOTConfig
     from lsst.afw.image import ExposureF, PhotoCalib
     from lsst.afw.detection import Psf
 
@@ -30,7 +30,7 @@ except ImportError:
     HAS_RUBIN_STACK = False
     # Fallback for development
     class PipelineTask:
-        def __init__(self, config: "DoPHOTConfig", name: Optional[str] = None) -> None:
+        def __init__(self, config: DoPHOTConfig, name: Optional[str] = None) -> None:
             self.config = config
             self.name = name or self.__class__.__name__
 
@@ -136,7 +136,9 @@ class DoPHOTTask(PipelineTask):
     ConfigClass = DoPHOTConfig
     _DefaultName = "dophot"
 
-    def __init__(self, config: "DoPHOTConfig", name: Optional[str] = None, **kwargs: Any) -> None:
+    config: DoPHOTConfig
+
+    def __init__(self, config: DoPHOTConfig, name: Optional[str] = None, **kwargs: Any) -> None:
         """Initialize DoPHOT task."""
         super().__init__(config, name=name, **kwargs)
 

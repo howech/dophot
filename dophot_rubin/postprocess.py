@@ -8,9 +8,9 @@ from typing import Optional, Union, TYPE_CHECKING
 import logging
 import numpy as np
 from astropy.table import Table
+from .config import DoPHOTConfig
 
 if TYPE_CHECKING:
-    from .config import DoPHOTConfig
     from lsst.afw.image import ExposureF, PhotoCalib
     from lsst.afw.detection import Psf
     from lsst.afw.table import SourceCatalog
@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 class DoPHOTPostprocessor:
     """Postprocess DoPHOT photometry output."""
 
-    def __init__(self, config: "DoPHOTConfig") -> None:
+    config: DoPHOTConfig
+
+    def __init__(self, config: DoPHOTConfig) -> None:
         """
         Initialize postprocessor.
 
@@ -257,7 +259,7 @@ class DoPHOTPostprocessor:
         return catalog
 
 
-def create_source_catalog(table_data: Table, config: "DoPHOTConfig") -> Union[Table, "SourceCatalog"]:
+def create_source_catalog(table_data: Table, config: DoPHOTConfig) -> Union[Table, "SourceCatalog"]:
     """
     Convert postprocessed table to Rubin SourceCatalog format.
 
@@ -322,7 +324,7 @@ def postprocess_dophot_output(
     catalog: Union[Table, str],
     calexp: Optional["ExposureF"] = None,
     photoCalib: Optional["PhotoCalib"] = None,
-    config: Optional["DoPHOTConfig"] = None
+    config: Optional[DoPHOTConfig] = None
 ) -> Union[Table, "SourceCatalog"]:
     """
     Convenience function for full postprocessing.
