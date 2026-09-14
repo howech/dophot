@@ -576,9 +576,6 @@ def _get_header_value(
         return default
 
     try:
-        if hasattr(header, 'get'):
-            return float(header.get(keyword, default))
-        else:
-            return float(header[keyword])
-    except (KeyError, TypeError, ValueError):
+        return float(header.get(keyword, default))
+    except (TypeError, ValueError):
         return default
