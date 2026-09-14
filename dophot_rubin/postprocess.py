@@ -22,6 +22,7 @@ class DoPHOTPostprocessor:
     """Postprocess DoPHOT photometry output."""
 
     config: DoPHOTConfig
+    log: logging.Logger
 
     def __init__(self, config: DoPHOTConfig) -> None:
         """

@@ -43,6 +43,7 @@ class DoPHOTPreprocessor:
     """Wrapper for PSF measurement and parameter generation."""
 
     config: DoPHOTConfig
+    log: logging.Logger
 
     def __init__(self, config: DoPHOTConfig) -> None:
         """
