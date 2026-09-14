@@ -10,6 +10,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Optional, Tuple
 
 from .config import DoPHOTConfig
+from .execute_dophot import DoPHOTExecutor
+from .image_scaling import (
+    apply_mask_to_scaled_image,
+    detect_units,
+    scale_image_to_int32,
+)
+from .postprocess import DoPHOTPostprocessor
+from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
+from .psf_measurement import (
+    append_psf_to_image,
+    generate_parameter_file,
+    measure_psf_simple,
+)
 
 if TYPE_CHECKING:
     from lsst.afw.image import ExposureF, PhotoCalib
@@ -50,21 +63,6 @@ except ImportError:
                 pass
 
     cT = MockConnectionTypes()
-
-from .config import DoPHOTConfig
-from .execute_dophot import DoPHOTExecutor
-from .image_scaling import (
-    apply_mask_to_scaled_image,
-    detect_units,
-    scale_image_to_int32,
-)
-from .postprocess import DoPHOTPostprocessor
-from .preprocess_wrapper import DoPHOTPreprocessor, PreprocessingContext
-from .psf_measurement import (
-    append_psf_to_image,
-    generate_parameter_file,
-    measure_psf_simple,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -420,7 +418,11 @@ class DoPHOTTask(PipelineTask):
                 self.log.error(f"DoPHOT execution failed: {e}")
                 import traceback
                 traceback.print_exc()
-                return Table(), ConversionFactors(units='unknown', factor=1.0, description='error')
+                return Table(), ConversionFactors(
+                    units='unknown',
+                    factor=1.0,
+                    description='error',
+                )
 
     def _postprocessing(
         self,
@@ -453,7 +455,7 @@ class DoPHOTTask(PipelineTask):
         """
         from .postprocess import create_source_catalog
 
-        # Step 1: Convert photometry back to original units if we have conversion factors
+        # Step 1: Convert photometry back to original units
         if conversion_factors and len(catalog) > 0:
             factor = conversion_factors.get('factor', 1.0)
             units = conversion_factors.get('units', 'unknown')

@@ -17,7 +17,8 @@ from psf_measurement import (
 )
 
 # Find test file
-test_file = Path("/home/chris/projects/astro/Sahas_CDoPhot/DoPHOT_C-master/verif_data/J0159.8.chip_01.fits")
+base_path = Path("/home/chris/projects/astro/Sahas_CDoPhot")
+test_file = base_path / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
 if not test_file.exists():
     print(f"ERROR: Test file not found: {test_file}")
     exit(1)
@@ -42,7 +43,8 @@ with fits.open(fits_file) as hdul:
     # Get mask if available
     if 'MASK' in hdul:
         mask = hdul['MASK'].data.astype('uint32')
-        print(f"✓ MASK extension found: {mask.shape}, {np.sum(mask > 0)} flagged pixels")
+        n_flagged = np.sum(mask > 0)
+        print(f"✓ MASK extension found: {mask.shape}, {n_flagged} flagged pixels")
     else:
         mask = None
         print("⚠ No MASK extension")
@@ -75,7 +77,9 @@ image_int32, conversion_factor, scale_metadata = scale_image_to_int32(
 
 print("✓ Image scaled to int32")
 print(f"  Shape: {image_int32.shape}, dtype: {image_int32.dtype}")
-print(f"  Min/max: {np.min(image_int32[image_int32>-30000]):.1f} / {np.max(image_int32):.1f}")
+img_min = np.min(image_int32[image_int32 > -30000])
+img_max = np.max(image_int32)
+print(f"  Min/max: {img_min:.1f} / {img_max:.1f}")
 print("\nScale metadata:")
 for key, val in scale_metadata.items():
     if isinstance(val, float):
