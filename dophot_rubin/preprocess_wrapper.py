@@ -115,18 +115,13 @@ class DoPHOTPreprocessor:
         self.log.info(msg)
 
         # Generate parameters
-        beta4_val = (
-            self.config.doPHOTWorkDir
-            if hasattr(self.config, 'psfBeta4')
-            else 1.0
-        )
         params = parameter_generation.compute_dophot_parameters(
             sigma=sigma,
             gain=image_stats['gain'],
             rdnoise=image_stats['rdnoise'],
             sky_value=image_stats['sky_value'],
             saturation=image_stats['saturation'],
-            beta4=beta4_val,
+            beta4=1.0,
             verbose=self.config.doDebug
         )
 
@@ -176,16 +171,14 @@ class DoPHOTPreprocessor:
 
         # Try to extract from header
         if header is not None:
-            # Handle different header formats
-            if hasattr(header, 'get'):
-                # Rubin header or dict
+            try:
                 gain_val = header.get('GAINA', header.get('GAIN', 1.0))
                 stats['gain'] = float(gain_val)
                 stats['saturation'] = float(header.get('SATURATE', 60000))
                 rdnoise_val = header.get('RDNOISEA', header.get('RDNOISE', 10.0))
                 stats['rdnoise'] = float(rdnoise_val)
-            else:
-                # Fallback to defaults
+            except (TypeError, ValueError, KeyError):
+                # Fallback to defaults if extraction fails
                 stats['gain'] = 1.0
                 stats['saturation'] = 60000
                 stats['rdnoise'] = 10.0
