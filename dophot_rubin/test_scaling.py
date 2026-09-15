@@ -81,7 +81,7 @@ img_min = np.min(image_int32[image_int32 > -30000])
 img_max = np.max(image_int32)
 print(f"  Min/max: {img_min:.1f} / {img_max:.1f}")
 print("\nScale metadata:")
-for key, val in scale_metadata.items():
+for key, val in scale_metadata._asdict().items():
     if isinstance(val, float):
         print(f"  {key}: {val:.4f}")
     else:
@@ -123,12 +123,12 @@ params = generate_parameter_file(
     beta4=beta4,
     beta6=beta6,
     beta8=beta8,
-    skyval=scale_metadata.get('skyval', 0),
-    epdn=scale_metadata.get('epdn', 1.0),
-    fpdn=1.0 / scale_metadata.get('gain', 1.0),
-    gain=scale_metadata.get('gain', 1.0),
+    skyval=scale_metadata.skyval,
+    epdn=scale_metadata.epdn,
+    fpdn=1.0 / scale_metadata.gain,
+    gain=scale_metadata.gain,
     saturation=saturation,
-    mprec=scale_metadata.get('mprec', 2),
+    mprec=scale_metadata.mprec,
     image_shape=image_int32_masked.shape,
     mask=mask
 )
@@ -165,8 +165,8 @@ image_hdu.header['BETA8'] = beta8
 image_hdu.header['PSFCENX'] = psfcenx
 image_hdu.header['PSFCENY'] = psfceny
 image_hdu.header['PSFCENZ'] = psfcenz
-image_hdu.header['EPDN'] = scale_metadata.get('epdn', 1.0)
-image_hdu.header['MPREC'] = scale_metadata.get('mprec', 2)
+image_hdu.header['EPDN'] = scale_metadata.epdn
+image_hdu.header['MPREC'] = scale_metadata.mprec
 image_hdu.header['SATVAL'] = saturation
 hdul.append(image_hdu)
 
@@ -183,8 +183,8 @@ print("="*70)
 print("\nSummary:")
 print(f"  Input: {fits_file.name}")
 print(f"  Units: {units}")
-print(f"  Scale factor (epdn): {scale_metadata.get('epdn', 1.0):.4f} {units}/int32")
-print(f"  Median precision (mprec): {scale_metadata.get('mprec', 2)}")
+print(f"  Scale factor (epdn): {scale_metadata.epdn:.4f} {units}/int32")
+print(f"  Median precision (mprec): {scale_metadata.mprec}")
 print(f"  PSF sigma: {sigma:.2f} pixels")
 print(f"  Output FITS: {intermediate_fits}")
 print(f"  Parameter file: {param_file}")
