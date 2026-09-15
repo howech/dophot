@@ -10,8 +10,24 @@ from astropy.table import Table
 from numpy.typing import NDArray
 
 
+class DoPHOTSource(NamedTuple):
+    """A single DoPHOT source measurement."""
+    id: np.int_
+    type: np.int_
+    sky: np.floating[Any]
+    x: np.floating[Any]
+    y: np.floating[Any]
+    flux: np.floating[Any]
+    psf_a: np.floating[Any]
+    psf_b: np.floating[Any]
+    psf_elong: np.floating[Any]
+    psf_pa: np.floating[Any]
+    chi2_a: np.floating[Any]
+    chi2_b: np.floating[Any]
+
+
 class DoPHOTSources(NamedTuple):
-    """Parsed DoPHOT source catalog from obj_out file."""
+    """Parsed DoPHOT source catalog from obj_out file (columnar format)."""
     id: NDArray[np.int_]
     type: NDArray[np.int_]
     sky: NDArray[np.floating[Any]]
