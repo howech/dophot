@@ -161,40 +161,34 @@ class DoPHOTPreprocessor:
 
         Returns
         -------
-        dict
+        ImageStats
             Statistics: sky_value, sky_rms, gain, rdnoise, saturation
         """
-        stats = {}
-
         # Sky value (robust percentile-based estimate)
-        stats['sky_value'] = float(np.percentile(image, 20))
-        stats['sky_rms'] = float(np.std(image[image < np.percentile(image, 50)]))
+        sky_value: float = float(np.percentile(image, 20))
+        sky_rms: float = float(np.std(image[image < np.percentile(image, 50)]))
 
-        # Try to extract from header
+        # Extract or use defaults for gain, saturation, readnoise
+        gain: float = 1.0
+        saturation: float = 60000.0
+        rdnoise: float = 10.0
+
         if header is not None:
             try:
                 gain_val = header.get('GAINA', header.get('GAIN', 1.0))
-                stats['gain'] = float(gain_val)
-                stats['saturation'] = float(header.get('SATURATE', 60000))
+                gain = float(gain_val)
+                saturation = float(header.get('SATURATE', 60000))
                 rdnoise_val = header.get('RDNOISEA', header.get('RDNOISE', 10.0))
-                stats['rdnoise'] = float(rdnoise_val)
+                rdnoise = float(rdnoise_val)
             except (TypeError, ValueError, KeyError):
-                # Fallback to defaults if extraction fails
-                stats['gain'] = 1.0
-                stats['saturation'] = 60000
-                stats['rdnoise'] = 10.0
-        else:
-            # Use defaults
-            stats['gain'] = 1.0
-            stats['saturation'] = 60000
-            stats['rdnoise'] = 10.0
+                pass
 
         result = ImageStats(
-            sky_value=stats['sky_value'],
-            sky_rms=stats['sky_rms'],
-            gain=stats['gain'],
-            rdnoise=stats['rdnoise'],
-            saturation=stats['saturation'],
+            sky_value=sky_value,
+            sky_rms=sky_rms,
+            gain=gain,
+            rdnoise=rdnoise,
+            saturation=saturation,
         )
 
         self.log.debug(f"Image stats: sky={result.sky_value:.1f}, "
