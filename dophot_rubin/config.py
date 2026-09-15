@@ -47,7 +47,7 @@ class DoPHOTConfig(pexConfig.Config):
 
     doPHOTExecPath = pexConfig.Field(
         dtype=str,
-        default="dophot",
+        default="/home/chris/projects/astro/Sahas_CDoPhot/DoPHOT_C-master/working_data/dophot",
         doc="Path to DoPHOT executable. Can be absolute path or in PATH."
     )
 
