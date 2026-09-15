@@ -8,14 +8,12 @@ into the Rubin PipelineTask context.
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
 
 from .config import DoPHOTConfig
-
-if TYPE_CHECKING:
-    from .psf_measurement import PSFParameters
+from .psf_measurement import PSFParameters
 
 
 class ImageStats(NamedTuple):
@@ -38,7 +36,7 @@ class PreprocessingMetadata(NamedTuple):
 class PreprocessingResult(NamedTuple):
     """Complete result from preprocessing."""
     sigma: float
-    params: "PSFParameters"
+    params: PSFParameters
     metadata: PreprocessingMetadata
 
 logger = logging.getLogger(__name__)
