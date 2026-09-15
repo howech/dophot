@@ -178,20 +178,20 @@ class DoPHOTPreprocessor:
             try:
                 gain_val = header.get('GAINA', header.get('GAIN', 1.0))
                 gain = float(gain_val)
-            except (TypeError, ValueError):
+            except TypeError:
                 self.log.debug(f"Could not extract gain, using default {gain}")
 
             # Extract saturation
             try:
                 saturation = float(header.get('SATURATE', 60000))
-            except (TypeError, ValueError):
+            except TypeError:
                 self.log.debug(f"Could not extract saturation, using default {saturation}")
 
             # Extract readnoise (try RDNOISEA first, then RDNOISE)
             try:
                 rdnoise_val = header.get('RDNOISEA', header.get('RDNOISE', 10.0))
                 rdnoise = float(rdnoise_val)
-            except (TypeError, ValueError):
+            except TypeError:
                 self.log.debug(f"Could not extract readnoise, using default {rdnoise}")
 
         result = ImageStats(
