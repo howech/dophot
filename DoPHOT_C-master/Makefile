@@ -32,14 +32,13 @@ DoPhotCOBJECTS = $(odir)dophot_globals.o $(odir)mini_mathlib.o $(odir)cast_arr.o
 	$(odir)parupd.o $(odir)errupd.o $(odir)covarupd.o \
         $(odir)lu_comp.o \
         $(odir)tagi4.o $(odir)medfil.o \
-        $(odir)makenoise.o $(odir)makenoise_nJy.o $(odir)paravg.o \
+        $(odir)makenoise.o $(odir)paravg.o \
         $(odir)ellipse.o $(odir)ellipint.o \
         $(odir)stdinpt.o $(odir)suminpt.o \
 	$(odir)stdotpt.o $(odir)sumout.o \
         $(odir)shdout.o  $(odir)covarout.o \
         $(odir)badotpt.o \
-        $(odir)newfits.o $(odir)readfits.o $(odir)readfits_nJy.o \
-        $(odir)readfits_variance.o $(odir)detect_image_units.o \
+        $(odir)newfits.o $(odir)readfits.o \
         $(odir)elarea.o $(odir)impaper.o \
         $(odir)toofaint.o $(odir)toobright.o $(odir)offpic.o \
         $(odir)addlims.o $(odir)oblims.o \
