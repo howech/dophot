@@ -11,18 +11,18 @@ from astropy.table import Table
 
 class DoPHOTSource(NamedTuple):
     """A single DoPHOT source measurement."""
-    id: np.int_
-    type: np.int_
-    sky: np.floating[Any]
-    x: np.floating[Any]
-    y: np.floating[Any]
-    flux: np.floating[Any]
-    psf_a: np.floating[Any]
-    psf_b: np.floating[Any]
-    psf_elong: np.floating[Any]
-    psf_pa: np.floating[Any]
-    chi2_a: np.floating[Any]
-    chi2_b: np.floating[Any]
+    id: int
+    type: int
+    sky: float
+    x: float
+    y: float
+    flux: float
+    psf_a: float
+    psf_b: float
+    psf_elong: float
+    psf_pa: float
+    chi2_a: float
+    chi2_b: float
 
 
 
@@ -47,18 +47,18 @@ def parse_obj_out(filepath: str) -> list[DoPHOTSource]:
     sources = []
     for row in data:
         source = DoPHOTSource(
-            id=np.int_(row[0]),
-            type=np.int_(row[1]),
-            sky=np.floating(row[2]),
-            x=np.floating(row[3]),
-            y=np.floating(row[4]),
-            flux=np.floating(row[5]),  # In int32 units
-            psf_a=np.floating(row[6]),
-            psf_b=np.floating(row[7]),
-            psf_elong=np.floating(row[8]),
-            psf_pa=np.floating(row[9]),
-            chi2_a=np.floating(row[10]) if len(row) > 10 else np.floating(0),
-            chi2_b=np.floating(row[11]) if len(row) > 11 else np.floating(0),
+            id=int(row[0]),
+            type=int(row[1]),
+            sky=float(row[2]),
+            x=float(row[3]),
+            y=float(row[4]),
+            flux=float(row[5]),  # In int32 units
+            psf_a=float(row[6]),
+            psf_b=float(row[7]),
+            psf_elong=float(row[8]),
+            psf_pa=float(row[9]),
+            chi2_a=float(row[10]) if len(row) > 10 else 0.0,
+            chi2_b=float(row[11]) if len(row) > 11 else 0.0,
         )
         sources.append(source)
 
