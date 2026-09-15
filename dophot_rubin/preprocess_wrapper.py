@@ -174,14 +174,25 @@ class DoPHOTPreprocessor:
         rdnoise: float = 10.0
 
         if header is not None:
+            # Extract gain (try GAINA first, then GAIN)
             try:
                 gain_val = header.get('GAINA', header.get('GAIN', 1.0))
                 gain = float(gain_val)
+            except (TypeError, ValueError):
+                self.log.debug(f"Could not extract gain, using default {gain}")
+
+            # Extract saturation
+            try:
                 saturation = float(header.get('SATURATE', 60000))
+            except (TypeError, ValueError):
+                self.log.debug(f"Could not extract saturation, using default {saturation}")
+
+            # Extract readnoise (try RDNOISEA first, then RDNOISE)
+            try:
                 rdnoise_val = header.get('RDNOISEA', header.get('RDNOISE', 10.0))
                 rdnoise = float(rdnoise_val)
-            except (TypeError, ValueError, KeyError):
-                pass
+            except (TypeError, ValueError):
+                self.log.debug(f"Could not extract readnoise, using default {rdnoise}")
 
         result = ImageStats(
             sky_value=sky_value,
