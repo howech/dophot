@@ -7,22 +7,23 @@ from typing import Any, NamedTuple
 
 import numpy as np
 from astropy.table import Table
+from numpy.typing import NDArray
 
 
 class DoPHOTSources(NamedTuple):
     """Parsed DoPHOT source catalog from obj_out file."""
-    id: np.ndarray
-    type: np.ndarray
-    sky: np.ndarray
-    x: np.ndarray
-    y: np.ndarray
-    flux: np.ndarray
-    psf_a: np.ndarray
-    psf_b: np.ndarray
-    psf_elong: np.ndarray
-    psf_pa: np.ndarray
-    chi2_a: np.ndarray
-    chi2_b: np.ndarray
+    id: NDArray[np.int_]
+    type: NDArray[np.int_]
+    sky: NDArray[np.floating[Any]]
+    x: NDArray[np.floating[Any]]
+    y: NDArray[np.floating[Any]]
+    flux: NDArray[np.floating[Any]]
+    psf_a: NDArray[np.floating[Any]]
+    psf_b: NDArray[np.floating[Any]]
+    psf_elong: NDArray[np.floating[Any]]
+    psf_pa: NDArray[np.floating[Any]]
+    chi2_a: NDArray[np.floating[Any]]
+    chi2_b: NDArray[np.floating[Any]]
 
 
 def parse_obj_out(filepath: str) -> DoPHOTSources:
