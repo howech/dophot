@@ -126,7 +126,8 @@ def measure_psf_simple(
             sigma = radius / 1.177  # Convert FWHM to sigma
             if 0.5 < sigma < 10:  # Reasonable range
                 sigmas.append(sigma)
-        except ValueError:
+        except ValueError as e:
+            logger.debug(f"Failed to measure star PSF: {e}")
             continue
 
     if len(sigmas) == 0:
