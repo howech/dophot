@@ -16,8 +16,8 @@ from psf_measurement import (
     measure_psf_simple,
 )
 
-# Find test file
-base_path = Path("/home/chris/projects/astro/Sahas_CDoPhot")
+# Find test file (relative to package location)
+base_path = Path(__file__).parent.parent
 test_file = base_path / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
 if not test_file.exists():
     print(f"ERROR: Test file not found: {test_file}")
