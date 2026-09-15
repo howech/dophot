@@ -7,7 +7,6 @@ from typing import Any, NamedTuple
 
 import numpy as np
 from astropy.table import Table
-from numpy.typing import NDArray
 
 
 class DoPHOTSource(NamedTuple):
@@ -26,23 +25,9 @@ class DoPHOTSource(NamedTuple):
     chi2_b: np.floating[Any]
 
 
-class DoPHOTSources(NamedTuple):
-    """Parsed DoPHOT source catalog from obj_out file (columnar format)."""
-    id: NDArray[np.int_]
-    type: NDArray[np.int_]
-    sky: NDArray[np.floating[Any]]
-    x: NDArray[np.floating[Any]]
-    y: NDArray[np.floating[Any]]
-    flux: NDArray[np.floating[Any]]
-    psf_a: NDArray[np.floating[Any]]
-    psf_b: NDArray[np.floating[Any]]
-    psf_elong: NDArray[np.floating[Any]]
-    psf_pa: NDArray[np.floating[Any]]
-    chi2_a: NDArray[np.floating[Any]]
-    chi2_b: NDArray[np.floating[Any]]
 
 
-def parse_obj_out(filepath: str) -> DoPHOTSources:
+def parse_obj_out(filepath: str) -> list[DoPHOTSource]:
     """
     Parse DoPHOT obj_out file format.
 
@@ -50,7 +35,7 @@ def parse_obj_out(filepath: str) -> DoPHOTSources:
     ID TYPE SKY X Y FLUX PSF_A PSF_B PSF_ELONGATION PSF_PA CHI2_A CHI2_B
     SHARPNESS EXTRAS...
 
-    Returns a dict with source data.
+    Returns a list of DoPHOTSource objects.
     """
     data = np.loadtxt(filepath)
 
@@ -58,25 +43,30 @@ def parse_obj_out(filepath: str) -> DoPHOTSources:
         # Single source
         data = data.reshape(1, -1)
 
-    # Extract columns (based on DoPHOT output format)
-    return DoPHOTSources(
-        id=data[:, 0].astype(int),
-        type=data[:, 1].astype(int),
-        sky=data[:, 2],
-        x=data[:, 3],
-        y=data[:, 4],
-        flux=data[:, 5],  # In int32 units
-        psf_a=data[:, 6],
-        psf_b=data[:, 7],
-        psf_elong=data[:, 8],
-        psf_pa=data[:, 9],
-        chi2_a=data[:, 10] if data.shape[1] > 10 else np.zeros(len(data)),
-        chi2_b=data[:, 11] if data.shape[1] > 11 else np.zeros(len(data)),
-    )
+    # Create DoPHOTSource object for each row
+    sources = []
+    for row in data:
+        source = DoPHOTSource(
+            id=np.int_(row[0]),
+            type=np.int_(row[1]),
+            sky=np.floating(row[2]),
+            x=np.floating(row[3]),
+            y=np.floating(row[4]),
+            flux=np.floating(row[5]),  # In int32 units
+            psf_a=np.floating(row[6]),
+            psf_b=np.floating(row[7]),
+            psf_elong=np.floating(row[8]),
+            psf_pa=np.floating(row[9]),
+            chi2_a=np.floating(row[10]) if len(row) > 10 else np.floating(0),
+            chi2_b=np.floating(row[11]) if len(row) > 11 else np.floating(0),
+        )
+        sources.append(source)
+
+    return sources
 
 
 def convert_to_original_units(
-    sources: DoPHOTSources,
+    sources: list[DoPHOTSource],
     conversion_factor: float,
     original_units: str = 'DN'
 ) -> Table:
@@ -85,8 +75,8 @@ def convert_to_original_units(
 
     Parameters
     ----------
-    sources : DoPHOTSources
-        Source data from parse_obj_out()
+    sources : list[DoPHOTSource]
+        Source list from parse_obj_out()
     conversion_factor : float
         Scale factor (DN/int32 or nJy/int32)
     original_units : str
@@ -97,26 +87,25 @@ def convert_to_original_units(
     catalog : astropy.table.Table
         Source catalog in original units
     """
-    # Convert flux and sky from int32 to original units
-    flux_original = sources.flux * conversion_factor
-    sky_original = sources.sky * conversion_factor
+    # Convert each source and collect into columns
+    catalog_data = {
+        'id': [s.id for s in sources],
+        'type': [s.type for s in sources],
+        'x': [s.x for s in sources],
+        'y': [s.y for s in sources],
+        'flux': [s.flux * conversion_factor for s in sources],
+        'flux_dn': [s.flux for s in sources],  # Keep int32 values for reference
+        'sky': [s.sky * conversion_factor for s in sources],
+        'psf_a': [s.psf_a for s in sources],
+        'psf_b': [s.psf_b for s in sources],
+        'psf_elong': [s.psf_elong for s in sources],
+        'psf_pa': [s.psf_pa for s in sources],
+        'chi2_a': [s.chi2_a for s in sources],
+        'chi2_b': [s.chi2_b for s in sources],
+    }
 
     # Create output table
-    catalog = Table({
-        'id': sources.id,
-        'type': sources.type,
-        'x': sources.x,
-        'y': sources.y,
-        'flux': flux_original,
-        'flux_dn': sources.flux,  # Also keep int32 values for reference
-        'sky': sky_original,
-        'psf_a': sources.psf_a,
-        'psf_b': sources.psf_b,
-        'psf_elong': sources.psf_elong,
-        'psf_pa': sources.psf_pa,
-        'chi2_a': sources.chi2_a,
-        'chi2_b': sources.chi2_b,
-    })
+    catalog = Table(catalog_data)
 
     # Add units to columns
     catalog['flux'].unit = original_units
@@ -175,9 +164,10 @@ if __name__ == '__main__':
     print("Parsing DoPHOT output...")
     sources = parse_obj_out(obj_file)
 
-    print(f"Found {len(sources.id)} sources")
-    flux_min = sources.flux.min()
-    flux_max = sources.flux.max()
+    print(f"Found {len(sources)} sources")
+    flux_values = np.array([s.flux for s in sources])
+    flux_min = flux_values.min()
+    flux_max = flux_values.max()
     print(f"Flux range (int32): {flux_min:.0f} to {flux_max:.0f}")
 
     # Convert back to DN
