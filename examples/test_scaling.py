@@ -9,8 +9,13 @@ from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
-from image_scaling import apply_mask_to_scaled_image, detect_units, scale_image_to_int32
-from psf_measurement import (
+
+from dophot_rubin.image_scaling import (
+    apply_mask_to_scaled_image,
+    detect_units,
+    scale_image_to_int32,
+)
+from dophot_rubin.psf_measurement import (
     append_psf_to_image,
     generate_parameter_file,
     measure_psf_simple,

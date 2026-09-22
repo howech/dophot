@@ -53,8 +53,8 @@ if RUBIN_AVAILABLE:
 
         doPHOTExecPath = pexConfig.Field(
             dtype=str,
-            default="/home/chris/projects/astro/Sahas_CDoPhot/DoPHOT_C-master/working_data/dophot",
-            doc="Path to DoPHOT executable. Can be absolute path or in PATH."
+            default="dophot",
+            doc="Path to DoPHOT executable. Can be absolute path or in PATH (default)."
         )
 
         doPHOTWorkDir = pexConfig.Field(
@@ -206,9 +206,7 @@ else:
             self.psfEdgeBuffer = 32
 
             # DoPHOT Execution Parameters
-            from pathlib import Path
-            default_exe = Path(__file__).parent.parent / "DoPHOT_C-master/working_data/dophot"
-            self.doPHOTExecPath = str(default_exe)
+            self.doPHOTExecPath = "dophot"
             self.doPHOTWorkDir = "/tmp/dophot_work"
             self.useEmpiricalModel = True
             self.psfModel = "PGAUSS"
@@ -278,4 +276,3 @@ if RUBIN_AVAILABLE:
 else:
     class DoPHOTTaskConnections:
         """Placeholder for DoPHOT task connections (standalone mode, no Rubin Stack)."""
-        pass

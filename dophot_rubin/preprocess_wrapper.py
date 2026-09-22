@@ -1,8 +1,8 @@
 """
 Preprocessing wrapper for DoPHOT task.
 
-Integrates PSF measurement and parameter generation from dophot_preprocess
-into the Rubin PipelineTask context.
+Orchestrates image scaling, PSF measurement, and parameter generation
+using the proven-working recipe from the standalone pipeline.
 """
 
 import logging
@@ -13,6 +13,7 @@ from typing import Any, NamedTuple
 import numpy as np
 
 from .config import DoPHOTConfig
+from .image_scaling import ScaleMetadata
 from .psf_measurement import PSFParameters
 
 
@@ -38,6 +39,15 @@ class PreprocessingResult(NamedTuple):
     sigma: float
     params: PSFParameters
     metadata: PreprocessingMetadata
+    image_int32: np.ndarray
+    image_with_psf: np.ndarray
+    conversion_factor: float
+    scale_metadata: ScaleMetadata
+    units: str
+    psfcenx: float
+    psfceny: float
+    psfcenz: int
+    param_file: Path
 
 logger = logging.getLogger(__name__)
 
@@ -71,68 +81,112 @@ class DoPHOTPreprocessor:
         """
         Run complete preprocessing pipeline.
 
+        Executes the proven-working recipe:
+        1. Detect image units (DN or nJy)
+        2. Scale image to int32 with mask awareness
+        3. Measure PSF from bright stars
+        4. Generate DoPHOT parameter file
+        5. Append PSF to image for DoPHOT input
+
         Parameters
         ----------
         image : ndarray
-            2D image array (DN or flux units)
+            2D image array (DN or flux units, float32)
         variance : ndarray, optional
             2D variance array (same units as image^2)
         mask : ndarray, optional
             2D mask array (0=good, nonzero=bad)
         header : dict or astropy.io.fits.Header, optional
-            FITS header with gain, saturation, readout noise
+            FITS header with GAIN, SATURATE, RDNOISE, etc.
         work_dir : str or Path, optional
-            Working directory for temporary files
+            Working directory for parameter file (default: temp dir)
 
         Returns
         -------
-        sigma : float
-            Measured PSF sigma (pixels)
-        params : dict
-            DoPHOT tuning parameters
-        metadata : dict
-            Processing metadata (n_stars, quality flags, etc.)
+        PreprocessingResult
+            Complete preprocessing output including all intermediate arrays
         """
-        from dophot_preprocess import parameter_generation
+        from .image_scaling import (
+            apply_mask_to_scaled_image,
+            detect_units,
+            scale_image_to_int32,
+        )
+        from .psf_measurement import (
+            append_psf_to_image,
+            generate_parameter_file,
+            measure_psf_simple,
+        )
 
-        msg = "Starting preprocessing: PSF measurement + parameter generation"
-        self.log.info(msg)
+        self.log.info("Starting preprocessing: PSF measurement + parameter generation")
 
         # Extract image statistics from header
         image_stats = self._extract_image_stats(header, image)
 
-        self.log.debug(f"Image stats: sky={image_stats['sky_value']:.1f}, "
-                      f"gain={image_stats['gain']:.2f}, "
-                      f"rdnoise={image_stats['rdnoise']:.1f}")
-
-        # Measure PSF
-        sigma, n_stars, success = self._measure_psf(image, image_stats)
-
-        if not success or sigma is None:
-            msg = f"PSF measurement failed (n_stars={n_stars}, success={success})"
-            raise RuntimeError(msg)
-
-        msg = f"✓ PSF measured: sigma={sigma:.3f} pixels ({n_stars} stars used)"
-        self.log.info(msg)
-
-        # Generate parameters
-        params = parameter_generation.compute_dophot_parameters(
-            sigma=sigma,
-            gain=image_stats['gain'],
-            rdnoise=image_stats['rdnoise'],
-            sky_value=image_stats['sky_value'],
-            saturation=image_stats['saturation'],
-            beta4=1.0,
-            verbose=self.config.doDebug
+        self.log.debug(
+            f"Image stats: sky={image_stats.sky_value:.1f}, "
+            f"gain={image_stats.gain:.2f}, "
+            f"rdnoise={image_stats.rdnoise:.1f}"
         )
 
-        self.log.info("✓ Parameters generated successfully")
+        # Step 1: Detect units
+        units = detect_units(header or {})
+        self.log.info(f"Detected units: {units}")
 
-        # Write parameter file
-        param_file = self._write_param_file(params, work_dir)
+        # Step 2: Scale image to int32
+        image_int32, conversion_factor, scale_metadata = scale_image_to_int32(
+            image,
+            units,
+            header=header,
+            mask=mask,
+            variance=variance,
+        )
+        self.log.info(
+            f"Scaled to int32: epdn={scale_metadata.epdn:.4f}, mprec={scale_metadata.mprec}"
+        )
+
+        # Step 3: Apply mask to scaled image
+        if mask is not None:
+            image_int32 = apply_mask_to_scaled_image(image_int32, mask)
+            self.log.debug("Applied mask to scaled image")
+
+        # Step 4: Measure PSF
+        sigma, beta4, beta6, beta8 = measure_psf_simple(image_int32, mask=mask)
+        self.log.info(f"PSF measured: σ={sigma:.3f} pixels")
+
+        # Step 5: Append PSF to image
+        image_with_psf, psfcenx, psfceny, psfcenz = append_psf_to_image(
+            image_int32, image_int32
+        )
+
+        # Step 6: Generate parameter file
+        if work_dir is None:
+            work_dir = Path(self.config.doPHOTWorkDir)
+        else:
+            work_dir = Path(work_dir)
+        work_dir.mkdir(parents=True, exist_ok=True)
+
+        param_file = work_dir / "dophot_auto.param"
+
+        params = generate_parameter_file(
+            str(param_file),
+            sigma=sigma,
+            beta4=beta4,
+            beta6=beta6,
+            beta8=beta8,
+            skyval=scale_metadata.skyval,
+            epdn=scale_metadata.epdn,
+            fpdn=1.0 / scale_metadata.gain,
+            gain=scale_metadata.gain,
+            saturation=image_stats.saturation,
+            mprec=scale_metadata.mprec,
+            image_shape=image_int32.shape,
+            mask=mask,
+            image_file="intermediate_i4.fits",
+        )
+        self.log.info(f"Parameter file written: {param_file}")
 
         metadata = PreprocessingMetadata(
-            n_stars_measured=n_stars,
+            n_stars_measured=0,  # Not tracked in simple PSF measurement
             param_file=str(param_file),
             image_stats=image_stats,
             psfSigma=sigma,
@@ -142,6 +196,15 @@ class DoPHOTPreprocessor:
             sigma=sigma,
             params=params,
             metadata=metadata,
+            image_int32=image_int32,
+            image_with_psf=image_with_psf,
+            conversion_factor=conversion_factor,
+            scale_metadata=scale_metadata,
+            units=units,
+            psfcenx=psfcenx,
+            psfceny=psfceny,
+            psfcenz=psfcenz,
+            param_file=param_file,
         )
 
     def _extract_image_stats(
@@ -209,135 +272,6 @@ class DoPHOTPreprocessor:
 
         return result
 
-    def _measure_psf(
-        self,
-        image: np.ndarray,
-        image_stats: ImageStats,
-    ) -> tuple[float, int, bool]:
-        """
-        Measure PSF sigma from bright stars.
-
-        Parameters
-        ----------
-        image : ndarray
-            2D image array
-        image_stats : dict
-            Image statistics
-
-        Returns
-        -------
-        sigma : float
-            PSF sigma (pixels)
-        n_stars : int
-            Number of stars successfully measured
-        success : bool
-            Whether measurement succeeded
-        """
-        from dophot_preprocess.psf_measurement import (
-            detect_bright_stars,
-            measure_psf_sigma,
-        )
-
-        # Detect bright stars
-        threshold = (
-            image_stats['sky_value']
-            + self.config.psfDetectionThreshold * image_stats['sky_rms']
-        )
-
-        # Create temp FITS file for detection (workaround for array-based detection)
-        import tempfile
-
-        from astropy.io import fits as fits_io
-
-        with tempfile.NamedTemporaryFile(suffix='.fits', delete=False) as tmp:
-            fits_io.writeto(tmp.name, image, overwrite=True)
-            try:
-                x, y, _ = detect_bright_stars(
-                    image,
-                    threshold=threshold,
-                    saturation=image_stats['saturation'],
-                    n_stars=None
-                )
-            except (TypeError, ValueError):
-                # No stars detected, return failure
-                msg = f"No bright stars detected (threshold={threshold:.1f} DN)"
-                self.log.debug(msg)
-                return np.nan, 0, False
-
-        if x is None or len(x) == 0:
-            self.log.debug(f"No bright stars detected (threshold={threshold:.1f} DN)")
-            return np.nan, 0, False
-
-        self.log.debug(f"Detected {len(x)} bright stars (threshold={threshold:.1f} DN)")
-
-        if len(x) == 0:
-            return np.nan, 0, False
-
-        # Measure PSF on each star
-        sigmas = []
-        for i, (xi, yi) in enumerate(zip(x, y)):
-            sigma, _, success = measure_psf_sigma(
-                image, xi, yi,
-                box_size=self.config.psfBoxSize,
-                debug=(i < 3 and self.config.doDebug)
-            )
-            if success:
-                sigmas.append(sigma)
-
-        n_stars = len(sigmas)
-        self.log.debug(f"Successfully measured {n_stars} stars")
-
-        if n_stars < self.config.psfMinStars:
-            min_stars = self.config.psfMinStars
-            self.log.warning(
-                f"Only {n_stars} stars measured (need {min_stars})"
-            )
-            return np.nan, n_stars, False
-
-        sigma = float(np.median(sigmas))
-        return sigma, n_stars, True
-
-    def _write_param_file(
-        self,
-        params: dict[str, Any],
-        work_dir: str | Path | None = None,
-    ) -> Path:
-        """
-        Write DoPHOT parameter file.
-
-        Parameters
-        ----------
-        params : dict
-            DoPHOT parameters
-        work_dir : str or Path, optional
-            Working directory
-
-        Returns
-        -------
-        Path
-            Path to written parameter file
-        """
-        from dophot_preprocess import param_file_writer
-
-        if work_dir is None:
-            work_dir = Path(self.config.doPHOTWorkDir)
-        else:
-            work_dir = Path(work_dir)
-
-        work_dir.mkdir(parents=True, exist_ok=True)
-        param_file = work_dir / "dophot_auto.param"
-
-        success = param_file_writer.write_param_file(
-            str(param_file),
-            params,
-            verbose=self.config.doDebug
-        )
-
-        if not success:
-            raise RuntimeError(f"Failed to write parameter file: {param_file}")
-
-        self.log.debug(f"Parameter file written: {param_file}")
-        return param_file
 
 
 class PreprocessingContext:

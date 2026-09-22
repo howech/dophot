@@ -8,10 +8,10 @@ import logging
 import subprocess
 from pathlib import Path
 
-from astropy.io import ascii
 from astropy.table import Table
 
 from .config import DoPHOTConfig
+from .parse_dophot_output import convert_to_original_units, parse_obj_out
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,9 @@ class DoPHOTExecutor:
         self,
         image_path: str | Path,
         param_file: str | Path,
-        output_dir: str | Path | None = None
+        output_dir: str | Path | None = None,
+        conversion_factor: float = 1.0,
+        original_units: str = "DN",
     ) -> Table:
         """
         Execute DoPHOT on an image.
@@ -68,11 +70,15 @@ class DoPHOTExecutor:
             Path to DoPHOT parameter file
         output_dir : str or Path, optional
             Directory for output files
+        conversion_factor : float
+            Scale factor to convert flux back to original units
+        original_units : str
+            Original units (DN, nJy, etc.) for conversion
 
         Returns
         -------
         catalog : astropy.table.Table
-            DoPHOT source catalog (loaded from output file)
+            DoPHOT source catalog with fluxes converted to original units
         """
         image_path = Path(image_path)
         param_file = Path(param_file)
@@ -95,21 +101,14 @@ class DoPHOTExecutor:
         self.log.debug(f"  Output dir: {output_dir}")
 
         try:
-            # DoPHOT is interactive - provide parameter file via stdin
-            # The executable expects the parameter file name as input
-            param_file_input = (
-                param_file.name if not param_file.is_absolute() else str(param_file)
-            )
-
-            # Execute DoPHOT
+            # Execute DoPHOT with parameter file as CLI argument
             result = subprocess.run(
-                [str(self.config.doPHOTExecPath)],
-                input=f"{param_file_input}\n",
+                [str(self.config.doPHOTExecPath), str(param_file)],
                 cwd=str(output_dir),
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
-                check=False
+                check=False,
             )
 
             if result.returncode != 0:
@@ -122,7 +121,9 @@ class DoPHOTExecutor:
             self.log.debug(f"DoPHOT output:\n{result.stdout}")
 
             # Parse output catalog
-            catalog = self._parse_output(output_dir)
+            catalog = self._parse_output(
+                output_dir, conversion_factor=conversion_factor, original_units=original_units
+            )
             self.log.info(f"✓ DoPHOT complete: {len(catalog)} sources detected")
 
             return catalog
@@ -135,45 +136,54 @@ class DoPHOTExecutor:
             self.log.error(f"DoPHOT execution failed: {e}")
             raise
 
-    def _parse_output(self, output_dir: str | Path) -> Table:
+    def _parse_output(
+        self,
+        output_dir: str | Path,
+        conversion_factor: float = 1.0,
+        original_units: str = "DN",
+    ) -> Table:
         """
         Parse DoPHOT output catalog.
+
+        DoPHOT writes output to files named obj_out_<basename> where <basename>
+        comes from the IMAGE_IN parameter file setting.
 
         Parameters
         ----------
         output_dir : Path
-            Output directory
+            Output directory containing DoPHOT output files
+        conversion_factor : float
+            Scale factor to convert flux from int32 back to original units
+        original_units : str
+            Original units (DN, nJy, etc.)
 
         Returns
         -------
         catalog : astropy.table.Table
-            Parsed source catalog
+            Parsed source catalog with fluxes in original units
         """
-        # Look for DoPHOT output files
-        # Typical DoPHOT output: objects_out, errors_out, etc.
+        output_dir = Path(output_dir)
 
-        output_file = Path(output_dir) / "objects_out"
-        errors_file = Path(output_dir) / "errors_out"
+        # Look for DoPHOT output file (obj_out_*)
+        matches = sorted(output_dir.glob("obj_out_*"))
 
-        if not output_file.exists():
-            self.log.warning(f"DoPHOT output file not found: {output_file}")
-            # Return empty table
+        if not matches:
+            self.log.warning(f"No DoPHOT obj_out_* file found in {output_dir}")
             return Table()
 
+        obj_out_file = matches[0]
+        self.log.debug(f"Found DoPHOT output: {obj_out_file.name}")
+
         try:
-            # Read source catalog
-            catalog = ascii.read(str(output_file))
+            # Parse the DoPHOT output file
+            sources = parse_obj_out(str(obj_out_file))
+            self.log.debug(f"Parsed {len(sources)} sources from {obj_out_file.name}")
 
-            # Read error catalog if available
-            if errors_file.exists():
-                errors = ascii.read(str(errors_file))
-                # Merge errors into main catalog
-                if len(errors) == len(catalog):
-                    for col in errors.colnames:
-                        if col not in catalog.colnames:
-                            catalog[f'err_{col}'] = errors[col]
+            # Convert to original units
+            catalog = convert_to_original_units(
+                sources, conversion_factor, original_units
+            )
 
-            self.log.debug(f"Loaded {len(catalog)} sources from DoPHOT output")
             return catalog
 
         except Exception as e:
@@ -185,7 +195,9 @@ def execute_dophot(
     image_path: str | Path,
     param_file: str | Path,
     config: DoPHOTConfig,
-    output_dir: str | Path | None = None
+    output_dir: str | Path | None = None,
+    conversion_factor: float = 1.0,
+    original_units: str = "DN",
 ) -> Table:
     """
     Convenience function to execute DoPHOT.
@@ -200,11 +212,21 @@ def execute_dophot(
         Task configuration
     output_dir : str or Path, optional
         Output directory
+    conversion_factor : float
+        Scale factor for unit conversion
+    original_units : str
+        Original flux units
 
     Returns
     -------
     catalog : astropy.table.Table
-        DoPHOT source catalog
+        DoPHOT source catalog with fluxes in original units
     """
     executor = DoPHOTExecutor(config)
-    return executor.run(image_path, param_file, output_dir)
+    return executor.run(
+        image_path,
+        param_file,
+        output_dir,
+        conversion_factor=conversion_factor,
+        original_units=original_units,
+    )

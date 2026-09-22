@@ -14,8 +14,8 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits
 
-from image_scaling import detect_units, scale_image_to_int32
-from psf_measurement import (
+from dophot_rubin.image_scaling import detect_units, scale_image_to_int32
+from dophot_rubin.psf_measurement import (
     append_psf_to_image,
     generate_parameter_file,
     measure_psf_simple,
@@ -38,7 +38,7 @@ if not dophot_exe.exists():
     sys.exit(1)
 
 print(f"\n{'='*70}")
-print(f"END-TO-END DoPHOT PIPELINE TEST")
+print("END-TO-END DoPHOT PIPELINE TEST")
 print(f"{'='*70}\n")
 
 # Load test data
@@ -61,7 +61,7 @@ print(f"✓ Units detected: {units}")
 image_int32, conversion_factor, scale_metadata = scale_image_to_int32(
     image, units, header=image_header, mask=None, variance=None
 )
-print(f"✓ Image scaled to int32")
+print("✓ Image scaled to int32")
 print(f"  Conversion factor: {conversion_factor:.6f} {units}/int32")
 print(f"  Scale metadata: epdn={scale_metadata.epdn:.4f}, mprec={scale_metadata.mprec}")
 
@@ -112,7 +112,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print(f"✓ Parameter file written: {param_file.name}")
 
     # Execute DoPHOT
-    print(f"\nExecuting DoPHOT C code...")
+    print("\nExecuting DoPHOT C code...")
     print(f"  Command: {dophot_exe} {param_file}")
 
     try:
@@ -126,7 +126,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
         )
 
         if result.returncode == 0:
-            print(f"✓ DoPHOT execution successful (exit code: 0)")
+            print("✓ DoPHOT execution successful (exit code: 0)")
         else:
             print(f"⚠ DoPHOT execution returned code {result.returncode}")
 
@@ -141,14 +141,14 @@ with tempfile.TemporaryDirectory() as tmpdir:
             num_lines = len(obj_out_file.read_text().strip().split('\n'))
             print(f"✓ DoPHOT output file found: {obj_out_file.name} ({num_lines} lines)")
         else:
-            print(f"⚠ No DoPHOT output file (obj_out_intermediate)")
+            print("⚠ No DoPHOT output file (obj_out_intermediate)")
             print(f"  Files in {tmpdir}:")
             for f in sorted(tmpdir.glob('*')):
                 print(f"    {f.name}")
 
     except subprocess.TimeoutExpired:
-        print(f"⚠ DoPHOT execution timed out (60s)")
-    except Exception as e:
+        print("⚠ DoPHOT execution timed out (60s)")
+    except (OSError, RuntimeError) as e:
         print(f"⚠ DoPHOT execution failed: {e}")
 
 # Summary
@@ -156,9 +156,9 @@ print(f"\n{'='*70}")
 print("END-TO-END TEST COMPLETE")
 print(f"{'='*70}\n")
 
-print(f"Summary:")
+print("Summary:")
 print(f"  Input image: {test_file.name} ({image.shape})")
 print(f"  DoPHOT executable: {dophot_exe}")
-print(f"  Preprocessing: ✓")
-print(f"  DoPHOT execution: Attempted")
-print(f"\n✓ INTEGRATION TEST COMPLETE")
+print("  Preprocessing: ✓")
+print("  DoPHOT execution: Attempted")
+print("\n✓ INTEGRATION TEST COMPLETE")

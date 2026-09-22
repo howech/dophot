@@ -34,10 +34,11 @@ print(f"✓ Test image available: {test_file.name}")
 print(f"  Size: {test_file.stat().st_size / (1024*1024):.1f} MB")
 
 # Import preprocessing functions
-from image_scaling import detect_units, scale_image_to_int32
-from psf_measurement import measure_psf_simple
 import numpy as np
 from astropy.io import fits
+
+from dophot_rubin.image_scaling import detect_units, scale_image_to_int32
+from dophot_rubin.psf_measurement import measure_psf_simple
 
 # Run preprocessing on test image
 with fits.open(test_file) as hdul:
@@ -65,7 +66,7 @@ print(f"{'='*70}\n")
 dophot_output = Path("/tmp/dophot_final_test2/obj_out_intermediate_i4")
 if not dophot_output.exists():
     print(f"ERROR: DoPHOT output file not found: {dophot_output}")
-    print(f"  (This indicates DoPHOT hasn't been run on preprocessing output)")
+    print("  (This indicates DoPHOT hasn't been run on preprocessing output)")
     sys.exit(1)
 
 print(f"✓ DoPHOT output found: {dophot_output}")
@@ -105,7 +106,7 @@ print(f"✓ Parsed {len(sources)} objects from DoPHOT output")
 real_sources = [s for s in sources if s['type'] == 1]
 sat_sources = [s for s in sources if s['type'] == 8]
 
-print(f"\nObject classification:")
+print("\nObject classification:")
 print(f"  Real sources: {len(real_sources)}")
 print(f"  Saturated: {len(sat_sources)}")
 
@@ -114,7 +115,7 @@ if real_sources:
     xs = np.array([s['x'] for s in real_sources])
     ys = np.array([s['y'] for s in real_sources])
 
-    print(f"\nReal source statistics:")
+    print("\nReal source statistics:")
     print(f"  X range: {np.min(xs):.1f} to {np.max(xs):.1f}")
     print(f"  Y range: {np.min(ys):.1f} to {np.max(ys):.1f}")
     print(f"  Flux range: {np.min(fluxes):.2e} to {np.max(fluxes):.2e}")
