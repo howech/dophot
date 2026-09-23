@@ -206,7 +206,13 @@ else:
             self.psfEdgeBuffer = 32
 
             # DoPHOT Execution Parameters
-            self.doPHOTExecPath = "dophot"
+            # Try to find dophot in package first, fallback to PATH
+            from pathlib import Path
+            dophot_in_package = Path(__file__).parent / "dophot_c" / "working_data" / "dophot"
+            if dophot_in_package.exists():
+                self.doPHOTExecPath = str(dophot_in_package)
+            else:
+                self.doPHOTExecPath = "dophot"  # Fallback to PATH
             self.doPHOTWorkDir = "/tmp/dophot_work"
             self.useEmpiricalModel = True
             self.psfModel = "PGAUSS"

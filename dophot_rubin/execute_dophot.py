@@ -101,13 +101,24 @@ class DoPHOTExecutor:
         self.log.debug(f"  Output dir: {output_dir}")
 
         try:
-            # Execute DoPHOT with parameter file as CLI argument
+            # Copy param_default_c to working directory (DoPHOT needs it)
+            repo_root = Path(self.config.doPHOTExecPath).parent.parent.parent
+            param_default = repo_root / "DoPHOT_C-master/working_data/param_default_c"
+            if param_default.exists():
+                import shutil
+                shutil.copy(param_default, output_dir / "param_default_c")
+
+            # Execute DoPHOT, providing both param file and default file via stdin
+            # DoPHOT is interactive: asks for (1) modification params file, (2) input objects file
+            param_filename = Path(param_file).name
+            stdin_input = f"{param_filename}\nparam_default_c\n"
             result = subprocess.run(
-                [str(self.config.doPHOTExecPath), str(param_file)],
+                [str(self.config.doPHOTExecPath)],
+                input=stdin_input,
                 cwd=str(output_dir),
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout
+                timeout=1800,  # 30 minute timeout
                 check=False,
             )
 

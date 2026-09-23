@@ -289,7 +289,7 @@ def generate_parameter_file(
         f.write(f"EPERDN = {1.0/fpdn:.1f}         Electrons per data number\n")
         f.write(f"RDNOISE = {rdne:.1f}       Readout noise in electrons\n")
         f.write("=\n")
-        f.write("PARAMS_DEFAULT = 'param_default'\n")
+        f.write("PARAMS_DEFAULT = 'param_default_c'\n")
         f.write("PARAMS_OUT = 'param_out'\n")
         f.write(f"IMAGE_IN = '{image_name}'\n")
         f.write(f"IMAGE_OUT = 'image_out_{img_base}.fits'\n")
@@ -401,7 +401,16 @@ def append_psf_to_image(
     # Calculate PSF center coordinates
     psfcenx = (psx - 1) / 2 + 1
     psfceny = (psy - 1) / 2 + 1 + ny
-    psfcenz = int(psf_work[int(psy / 2), int(psx / 2)])
+    center_val = psf_work[int(psy / 2), int(psx / 2)]
+    # Handle NaN values in PSF center (use max valid value if center is NaN)
+    if np.isnan(center_val):
+        valid_mask = np.isfinite(psf_work)
+        if np.any(valid_mask):
+            psfcenz = int(np.nanmax(psf_work))
+        else:
+            psfcenz = 100  # Fallback if all NaN
+    else:
+        psfcenz = int(center_val)
 
     msg = f"PSF appended. Center: ({psfcenx:.1f}, {psfceny:.1f}), Value: {psfcenz}"
     logger.info(msg)
