@@ -109,10 +109,13 @@ class DoPHOTExecutor:
 
             # Execute DoPHOT with parameter file as CLI argument (fully non-interactive)
             # DoPHOT: if argc==2, argv[1] is the param file; no stdin prompts needed
+            # stdin=DEVNULL prevents hanging if DoPHOT tries to prompt interactively
             result = subprocess.run(
                 [str(self.config.doPHOTExecPath), str(param_file)],
                 cwd=str(output_dir),
-                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 timeout=1800,  # 30 minute timeout
                 check=False,
