@@ -23,7 +23,7 @@ from dophot_rubin.psf_measurement import (
 
 # Find test file (relative to package location)
 base_path = Path(__file__).parent.parent
-test_file = base_path / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
+test_file = base_path / "dophot_c/verif_data/J0159.8.chip_01.fits"
 if not test_file.exists():
     print(f"ERROR: Test file not found: {test_file}")
     sys.exit(1)

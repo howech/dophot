@@ -2,7 +2,7 @@
 Tier A validation: Compare pipeline output against DoPHOT C reference fixture.
 
 Tests the fixed DoPHOTPreprocessor → DoPHOTExecutor pipeline against the
-in-repo DoPHOT_C-master/verif_data/compare_out/ reference data for J0159.8.chip_01.fits.
+in-repo dophot_c/verif_data/compare_out/ reference data for J0159.8.chip_01.fits.
 
 Uses structural/statistical comparison (not byte-exact diff) since our pipeline's
 auto-generated parameters differ from the original C-verification workflow's
@@ -23,9 +23,9 @@ from dophot_rubin.parse_dophot_output import parse_obj_out
 
 # Paths
 REPO_ROOT = Path(__file__).parent.parent.parent
-TEST_IMAGE = REPO_ROOT / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
-REFERENCE_CATALOG = REPO_ROOT / "DoPHOT_C-master/verif_data/compare_out/obj_out_J0159.8.chip_01"
-DOPHOT_EXE = REPO_ROOT / "DoPHOT_C-master/working_data/dophot"
+TEST_IMAGE = REPO_ROOT / "dophot_c/verif_data/J0159.8.chip_01.fits"
+REFERENCE_CATALOG = REPO_ROOT / "dophot_c/verif_data/compare_out/obj_out_J0159.8.chip_01"
+DOPHOT_EXE = REPO_ROOT / "dophot_c/working_data/dophot"
 
 
 @pytest.fixture

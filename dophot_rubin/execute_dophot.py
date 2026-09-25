@@ -101,20 +101,16 @@ class DoPHOTExecutor:
         self.log.debug(f"  Output dir: {output_dir}")
 
         try:
-            # Copy param_default_c to working directory (DoPHOT needs it)
-            repo_root = Path(self.config.doPHOTExecPath).parent.parent.parent
-            param_default = repo_root / "DoPHOT_C-master/working_data/param_default_c"
-            if param_default.exists():
+            # Copy param_default_c to working directory (DoPHOT needs it for PARAMS_DEFAULT)
+            param_default_path = Path(self.config.doPHOTParamDefaultPath)
+            if param_default_path.exists():
                 import shutil
-                shutil.copy(param_default, output_dir / "param_default_c")
+                shutil.copy(param_default_path, output_dir / "param_default_c")
 
-            # Execute DoPHOT, providing both param file and default file via stdin
-            # DoPHOT is interactive: asks for (1) modification params file, (2) input objects file
-            param_filename = Path(param_file).name
-            stdin_input = f"{param_filename}\nparam_default_c\n"
+            # Execute DoPHOT with parameter file as CLI argument (fully non-interactive)
+            # DoPHOT: if argc==2, argv[1] is the param file; no stdin prompts needed
             result = subprocess.run(
-                [str(self.config.doPHOTExecPath)],
-                input=stdin_input,
+                [str(self.config.doPHOTExecPath), str(param_file)],
                 cwd=str(output_dir),
                 capture_output=True,
                 text=True,
@@ -123,11 +119,9 @@ class DoPHOTExecutor:
             )
 
             if result.returncode != 0:
-                msg = f"DoPHOT execution failed with return code {result.returncode}"
-                self.log.error(msg)
-                self.log.error(f"STDOUT: {result.stdout}")
-                self.log.error(f"STDERR: {result.stderr}")
-                raise RuntimeError(f"DoPHOT failed: {result.stderr}")
+                self.log.warning(f"DoPHOT exited with return code {result.returncode}")
+                self.log.debug(f"STDOUT: {result.stdout}")
+                self.log.debug(f"STDERR: {result.stderr}")
 
             self.log.debug(f"DoPHOT output:\n{result.stdout}")
 

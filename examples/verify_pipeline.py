@@ -12,7 +12,7 @@ print(f"\n{'='*70}")
 print("STEP 1: VERIFY DoPHOT EXECUTABLE")
 print(f"{'='*70}\n")
 
-dophot_exe = Path(__file__).parent.parent / "DoPHOT_C-master/working_data/dophot"
+dophot_exe = Path(__file__).parent.parent / "dophot_c/working_data/dophot"
 if not dophot_exe.exists():
     print(f"ERROR: DoPHOT executable not found: {dophot_exe}")
     sys.exit(1)
@@ -25,7 +25,7 @@ print(f"\n{'='*70}")
 print("STEP 2: VERIFY PREPROCESSING OUTPUTS")
 print(f"{'='*70}\n")
 
-test_file = Path(__file__).parent.parent / "DoPHOT_C-master/verif_data/J0159.8.chip_01.fits"
+test_file = Path(__file__).parent.parent / "dophot_c/verif_data/J0159.8.chip_01.fits"
 if not test_file.exists():
     print(f"ERROR: Test FITS file not found: {test_file}")
     sys.exit(1)

@@ -208,11 +208,20 @@ else:
             # DoPHOT Execution Parameters
             # Try to find dophot in package first, fallback to PATH
             from pathlib import Path
-            dophot_in_package = Path(__file__).parent / "dophot_c" / "working_data" / "dophot"
+            dophot_c_root = Path(__file__).parent / "dophot_c"
+            dophot_in_package = dophot_c_root / "working_data" / "dophot"
             if dophot_in_package.exists():
                 self.doPHOTExecPath = str(dophot_in_package)
             else:
                 self.doPHOTExecPath = "dophot"  # Fallback to PATH
+
+            # doPHOT parameter default file (required for PARAMS_DEFAULT in param file)
+            param_default_in_package = dophot_c_root / "working_data" / "param_default_c"
+            if param_default_in_package.exists():
+                self.doPHOTParamDefaultPath = str(param_default_in_package)
+            else:
+                self.doPHOTParamDefaultPath = "param_default_c"  # Fallback to PATH/cwd
+
             self.doPHOTWorkDir = "/tmp/dophot_work"
             self.useEmpiricalModel = True
             self.psfModel = "PGAUSS"
