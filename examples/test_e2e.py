@@ -54,7 +54,7 @@ preprocessing_result = preprocessor.run(
     image=image, header=image_header, work_dir=work_dir
 )
 
-print(f"✓ Preprocessing complete")
+print("✓ Preprocessing complete")
 print(f"  PSF sigma: {preprocessing_result.sigma:.3f} pixels")
 print(f"  Conversion factor: {preprocessing_result.conversion_factor:.6f}")
 
@@ -80,7 +80,7 @@ catalog = executor.run(
 )
 
 if len(catalog) > 0:
-    print(f"✓ DoPHOT execution completed successfully")
+    print("✓ DoPHOT execution completed successfully")
     print(f"✓ Detected {len(catalog)} sources")
 else:
     print("⚠ DoPHOT produced no output")
@@ -93,7 +93,7 @@ print(f"{'='*70}\n")
 print("Summary:")
 print(f"  Input image: {test_file.name} ({image.shape})")
 print(f"  DoPHOT executable: {config.doPHOTExecPath}")
-print(f"  Preprocessing: ✓")
+print("  Preprocessing: ✓")
 print(f"  DoPHOT execution: ✓ ({len(catalog)} sources)")
 print(f"  Output directory: {work_dir}")
 print("\n✓ INTEGRATION TEST COMPLETE")
