@@ -20,7 +20,7 @@ pip install -e .
 
 ## Prerequisites
 
-The DoPHOT C executable must be built separately from the C source code in `DoPHOT_C-master/`.
+The DoPHOT C executable must be built separately from the C source code in `dophot_rubin/dophot_c/`.
 
 Requirements:
 - C compiler (gcc)
@@ -29,12 +29,12 @@ Requirements:
 To build:
 
 ```bash
-cd DoPHOT_C-master
+cd dophot_rubin/dophot_c
 make clean
 make
 ```
 
-The compiled binary will be at `DoPHOT_C-master/working_data/dophot`.
+The compiled binary will be at `dophot_rubin/dophot_c/working_data/dophot`.
 
 ## Quick Start
 
@@ -78,6 +78,6 @@ See `examples/` directory for complete end-to-end examples.
 
 MIT License. See LICENSE file for details.
 
-Note: The DoPHOT C code in `DoPHOT_C-master/` is separately licensed under MIT
-(with one file under Common Public License v1.0). See `DoPHOT_C-master/LICENSE`
+Note: The DoPHOT C code in `dophot_rubin/dophot_c/` is separately licensed under MIT
+(with one file under Common Public License v1.0). See `dophot_rubin/dophot_c/LICENSE`
 for details.

@@ -153,7 +153,7 @@ import numpy as np
 from pathlib import Path
 
 # Load C library
-_libpath = Path(__file__).parent.parent / "DoPHOT_C-master" / "libdophot.so"
+_libpath = Path(__file__).parent / "dophot_c" / "libdophot.so"
 _lib = ctypes.CDLL(str(_libpath))
 
 # Define C function signatures
