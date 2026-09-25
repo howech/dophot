@@ -32,7 +32,7 @@
 - Updated Makefile to link globals.o first
 
 **Deliverables**:
-- `DoPHOT_C-master/dophot_globals.c` — centralized global definitions
+- `dophot_rubin/dophot_c/dophot_globals.c` — centralized global definitions
 - All struct headers converted to extern mode
 - `GLOBALS_AUDIT.md` — comprehensive audit documentation
 - Verified: dophot_globals.o compiles successfully (22 KB)
@@ -153,7 +153,7 @@ Sahas_CDoPhot/
 ├── .venv/                          # Python virtual environment
 ├── requirements.txt                # Python dependencies
 │
-├── DoPHOT_C-master/               # Official C source (refactored)
+├── dophot_rubin/dophot_c/               # Official C source (refactored)
 │   ├── dophot_globals.c            # Global definitions
 │   ├── structs/                    # Modified: extern declarations
 │   ├── headers/                    # Modified: extern declarations

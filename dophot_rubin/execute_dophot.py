@@ -110,6 +110,9 @@ class DoPHOTExecutor:
             # Execute DoPHOT with parameter file as CLI argument (fully non-interactive)
             # DoPHOT: if argc==2, argv[1] is the param file; no stdin prompts needed
             # stdin=DEVNULL prevents hanging if DoPHOT tries to prompt interactively
+            self.log.info(f"Running: {self.config.doPHOTExecPath} {param_file}")
+            import time
+            start_time = time.time()
             result = subprocess.run(
                 [str(self.config.doPHOTExecPath), str(param_file)],
                 cwd=str(output_dir),
@@ -117,9 +120,11 @@ class DoPHOTExecutor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=1800,  # 30 minute timeout
+                timeout=60,  # 60 second timeout (DoPHOT should complete in ~5-10s)
                 check=False,
             )
+            elapsed = time.time() - start_time
+            self.log.info(f"DoPHOT completed in {elapsed:.1f}s with return code {result.returncode}")
 
             if result.returncode != 0:
                 self.log.warning(f"DoPHOT exited with return code {result.returncode}")

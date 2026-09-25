@@ -196,7 +196,7 @@ def write_param_file(filename, params, verbose=True):
 | **Parameter Math (Boxes)** | params_dp1_pim.pro | psf_measurement.py:generate_parameter_file() | ✅ COMPLETE |
 | **Parameter Math (Thresholds)** | params_dp1_pim.pro | psf_measurement.py:generate_parameter_file() | ✅ COMPLETE |
 | **Parameter File Writing** | paramfile.pro | psf_measurement.py:generate_parameter_file() | ✅ COMPLETE |
-| **DoPHOT Execution** | dophot.exe | execute_dophot.py + DoPHOT_C-master/ | ✅ COMPLETE |
+| **DoPHOT Execution** | dophot.exe | execute_dophot.py + dophot_rubin/dophot_c/ | ✅ COMPLETE |
 | **Output Parsing** | None (custom) | parse_dophot_output.py | ✅ NEW FEATURE |
 | **Postprocessing** | None (custom) | postprocess.py | ✅ NEW FEATURE |
 | **Rubin Integration** | None (custom) | dophot_rubin/task.py, config.py | ✅ NEW FEATURE |

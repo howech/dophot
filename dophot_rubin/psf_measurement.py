@@ -293,8 +293,9 @@ def generate_parameter_file(
         f.write("PARAMS_OUT = 'param_out'\n")
         f.write(f"IMAGE_IN = '{image_name}'\n")
         f.write(f"IMAGE_OUT = 'image_out_{img_base}.fits'\n")
-        f.write("OBJECTS_IN = ''\n")
-        f.write("OBJTYPE_IN = 'INTERNAL'\n")
+        # Omit OBJECTS_IN entirely to skip warmstart; including it (even empty) triggers prompts
+        # f.write("OBJECTS_IN = ''\n")
+        # f.write("OBJTYPE_IN = 'INTERNAL'\n")
         f.write(f"OBJECTS_OUT = 'obj_out_{img_base}'\n")
         f.write("OBJTYPE_OUT = 'INTERNAL'\n")
         f.write(f"ERRORS_OUT = 'errors_out_{img_base}'\n")

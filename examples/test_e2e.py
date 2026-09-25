@@ -69,8 +69,16 @@ print(f"\n{'='*70}")
 print("STEP 2: EXECUTE DoPHOT C CODE")
 print(f"{'='*70}")
 
+print(f"  Param file: {preprocessing_result.param_file}")
+print(f"  Image file: {intermediate_fits}")
+print(f"  Output dir: {work_dir}")
+print(f"  Param file exists: {Path(preprocessing_result.param_file).exists()}")
+print(f"  Image file exists: {intermediate_fits.exists()}")
+print(f"  DoPHOT executable: {config.doPHOTExecPath}")
+
 executor = DoPHOTExecutor(config)
 
+print("Executing DoPHOT...")
 catalog = executor.run(
     image_path=intermediate_fits,
     param_file=preprocessing_result.param_file,
@@ -78,6 +86,7 @@ catalog = executor.run(
     conversion_factor=preprocessing_result.conversion_factor,
     original_units=preprocessing_result.units,
 )
+print("DoPHOT execution complete.")
 
 if len(catalog) > 0:
     print("✓ DoPHOT execution completed successfully")
