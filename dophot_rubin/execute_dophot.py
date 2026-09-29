@@ -1,16 +1,19 @@
 """
 DoPHOT C library execution wrapper.
 
-Handles calling the compiled DoPHOT C code with generated parameter files.
+Supports two execution modes:
+1. Subprocess invocation (subprocess.run) via CLI args
+2. Direct ctypes library calls (Phase 3, preferred)
 
-Current implementation: Subprocess invocation (subprocess.run) via CLI args.
-Alternative (Phase 3): Direct ctypes library calls (see _library_call_example below).
+Automatically detects and uses library if available, falls back to subprocess.
 """
 
 import logging
 import subprocess
 from pathlib import Path
 
+import numpy as np
+from astropy.io import fits
 from astropy.table import Table
 
 from .config import DoPHOTConfig
@@ -20,10 +23,12 @@ logger = logging.getLogger(__name__)
 
 
 class DoPHOTExecutor:
-    """Wrapper for executing DoPHOT C code."""
+    """Wrapper for executing DoPHOT C code via library or subprocess."""
 
     config: DoPHOTConfig
     log: logging.Logger
+    library: object
+    use_library: bool
 
     def __init__(self, config: DoPHOTConfig) -> None:
         """
@@ -36,9 +41,25 @@ class DoPHOTExecutor:
         """
         self.config = config
         self.log = logging.getLogger(__name__)
+        self.library = None
+        self.use_library = False
 
-        # Verify executable exists
-        self._verify_executable()
+        # Try to load library; fall back to subprocess
+        self._load_library()
+        if not self.use_library:
+            self._verify_executable()
+
+    def _load_library(self) -> None:
+        """Try to load DoPHOT C library; fall back to subprocess if not available."""
+        try:
+            from .test_library_wrapper import DoPHOTLibrary
+            lib = DoPHOTLibrary()
+            self.library = lib
+            self.use_library = True
+            self.log.info("Using DoPHOT C library (ctypes) mode")
+        except Exception as e:
+            self.log.debug(f"DoPHOT library not available: {e}; falling back to subprocess")
+            self.use_library = False
 
     def _verify_executable(self) -> None:
         """Verify DoPHOT executable is available."""
@@ -61,6 +82,7 @@ class DoPHOTExecutor:
         output_dir: str | Path | None = None,
         conversion_factor: float = 1.0,
         original_units: str = "DN",
+        preprocessing_result = None,
     ) -> Table:
         """
         Execute DoPHOT on an image.
@@ -70,13 +92,15 @@ class DoPHOTExecutor:
         image_path : str or Path
             Path to input FITS image
         param_file : str or Path
-            Path to DoPHOT parameter file
+            Path to DoPHOT parameter file (used for subprocess mode)
         output_dir : str or Path, optional
             Directory for output files
         conversion_factor : float
             Scale factor to convert flux back to original units
         original_units : str
             Original units (DN, nJy, etc.) for conversion
+        preprocessing_result : PreprocessingResult, optional
+            Preprocessing result with PSF parameters (required for library mode)
 
         Returns
         -------
@@ -88,8 +112,6 @@ class DoPHOTExecutor:
 
         if not image_path.exists():
             raise FileNotFoundError(f"Image file not found: {image_path}")
-        if not param_file.exists():
-            raise FileNotFoundError(f"Parameter file not found: {param_file}")
 
         if output_dir is None:
             output_dir = Path(self.config.doPHOTWorkDir)
@@ -100,8 +122,93 @@ class DoPHOTExecutor:
 
         self.log.info(f"Executing DoPHOT on {image_path.name}")
         self.log.debug(f"  Image: {image_path}")
-        self.log.debug(f"  Parameters: {param_file}")
         self.log.debug(f"  Output dir: {output_dir}")
+        self.log.debug(f"  Mode: {'library' if self.use_library else 'subprocess'}")
+
+        try:
+            if self.use_library and preprocessing_result is not None:
+                return self._run_library(
+                    image_path, output_dir, preprocessing_result,
+                    conversion_factor, original_units
+                )
+            else:
+                return self._run_subprocess(
+                    image_path, param_file, output_dir,
+                    conversion_factor, original_units
+                )
+
+        except Exception as e:
+            self.log.error(f"DoPHOT execution failed: {e}")
+            raise
+
+    def _run_library(
+        self,
+        image_path: Path,
+        output_dir: Path,
+        preprocessing_result,
+        conversion_factor: float,
+        original_units: str,
+    ) -> Table:
+        """Execute via DoPHOT C library (ctypes, no subprocess)."""
+        import time
+        from .test_library_wrapper import DoPHOTParams
+
+        # Load FITS image with astropy (no CFITSIO needed)
+        self.log.debug(f"Loading FITS: {image_path}")
+        with fits.open(image_path) as hdul:
+            image = hdul[0].data.astype(np.int32)
+
+        ny, nx = image.shape
+
+        # Compute noise array (simple: sqrt of image for now)
+        noise = np.sqrt(np.maximum(image, 1)).astype(np.int32)
+
+        # Ensure C-contiguous
+        if not image.flags['C_CONTIGUOUS']:
+            image = np.ascontiguousarray(image)
+        if not noise.flags['C_CONTIGUOUS']:
+            noise = np.ascontiguousarray(noise)
+
+        # Build params struct from preprocessing result
+        params = DoPHOTParams(
+            sigma=preprocessing_result.sigma,
+            fwhm=preprocessing_result.sigma * 2.35,
+            sky_value=preprocessing_result.metadata.image_stats.sky_value,
+            gain=preprocessing_result.metadata.image_stats.gain,
+            rdnoise=preprocessing_result.metadata.image_stats.rdnoise,
+            saturation=preprocessing_result.metadata.image_stats.saturation,
+            nthpix=20,  # Default threshold pixels
+            nfit=3,     # Fit 3 parameters (x, y, flux)
+            model=0,    # PGAUSS model
+        )
+
+        self.log.info(f"Calling DoPHOT library (sigma={params.sigma:.3f}, sky={params.sky_value:.1f})")
+        start_time = time.time()
+        retcode, results = self.library.run(image, noise, params)
+        elapsed = time.time() - start_time
+        self.log.info(f"DoPHOT completed in {elapsed:.1f}s with return code {retcode}")
+
+        if retcode != 0:
+            raise RuntimeError(f"DoPHOT library call failed with return code {retcode}")
+
+        # Convert C results to astropy Table
+        catalog = self._results_to_table(results, conversion_factor, original_units)
+        self.log.info(f"✓ DoPHOT complete: {len(catalog)} sources detected")
+        return catalog
+
+    def _run_subprocess(
+        self,
+        image_path: Path,
+        param_file: Path,
+        output_dir: Path,
+        conversion_factor: float,
+        original_units: str,
+    ) -> Table:
+        """Execute via subprocess (fallback mode)."""
+        import time
+
+        if not param_file.exists():
+            raise FileNotFoundError(f"Parameter file not found: {param_file}")
 
         try:
             # Copy param_default_c to working directory (DoPHOT needs it for PARAMS_DEFAULT)
@@ -110,11 +217,7 @@ class DoPHOTExecutor:
                 import shutil
                 shutil.copy(param_default_path, output_dir / "param_default_c")
 
-            # Execute DoPHOT with parameter file as CLI argument (fully non-interactive)
-            # DoPHOT: if argc==2, argv[1] is the param file; no stdin prompts needed
-            # stdin=DEVNULL prevents hanging if DoPHOT tries to prompt interactively
             self.log.info(f"Running: {self.config.doPHOTExecPath} {param_file}")
-            import time
             start_time = time.time()
             result = subprocess.run(
                 [str(self.config.doPHOTExecPath), str(param_file)],
@@ -123,7 +226,7 @@ class DoPHOTExecutor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=60,  # 60 second timeout (DoPHOT should complete in ~5-10s)
+                timeout=60,
                 check=False,
             )
             elapsed = time.time() - start_time
@@ -136,21 +239,47 @@ class DoPHOTExecutor:
 
             self.log.debug(f"DoPHOT output:\n{result.stdout}")
 
-            # Parse output catalog
+            # Parse output catalog from files
             catalog = self._parse_output(
                 output_dir, conversion_factor=conversion_factor, original_units=original_units
             )
             self.log.info(f"✓ DoPHOT complete: {len(catalog)} sources detected")
-
             return catalog
 
         except subprocess.TimeoutExpired:
-            self.log.error("DoPHOT execution timed out (>300s)")
+            self.log.error("DoPHOT execution timed out (>60s)")
             raise RuntimeError("DoPHOT execution timed out")
 
-        except Exception as e:
-            self.log.error(f"DoPHOT execution failed: {e}")
-            raise
+    def _results_to_table(self, results, conversion_factor: float, original_units: str) -> Table:
+        """Convert C results struct to astropy Table."""
+        from .parse_dophot_output import SourceCatalog
+
+        if results.n_stars == 0:
+            return Table()
+
+        # Extract arrays from results
+        x_arr = np.array([results.x[i] for i in range(results.n_stars)])
+        y_arr = np.array([results.y[i] for i in range(results.n_stars)])
+        mag_arr = np.array([results.mag[i] for i in range(results.n_stars)])
+        err_arr = np.array([results.err[i] for i in range(results.n_stars)])
+
+        # Create table rows
+        rows = []
+        for i in range(results.n_stars):
+            row = SourceCatalog(
+                x=float(x_arr[i]),
+                y=float(y_arr[i]),
+                flux=float(mag_arr[i]),
+                flux_err=float(err_arr[i]),
+                mag=0.0,  # Will be set by convert_to_original_units
+                mag_err=float(err_arr[i]),
+            )
+            rows.append(row)
+
+        # Convert to Table and apply unit conversion
+        catalog = Table(rows=rows)
+        catalog = convert_to_original_units(catalog, conversion_factor, original_units)
+        return catalog
 
     def _parse_output(
         self,
