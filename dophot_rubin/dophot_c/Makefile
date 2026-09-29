@@ -78,5 +78,9 @@ test: $(DoPhotCOBJECTS)
 	     $(CC) $(DoPhotCOBJECTS) \
 	     -o ./verif_data/dophot $(CFLAGS) $(LIBS) -lm
 
-clean: 
-	rm -f *.o ./working_data/dophot ./verif_data/dophot
+libdophot.so: $(DoPhotCOBJECTS)
+	     $(CC) -shared -fPIC $(DoPhotCOBJECTS) \
+	     -o ./libdophot.so $(CFLAGS) $(LIBS) -lm
+
+clean:
+	rm -f *.o ./working_data/dophot ./verif_data/dophot ./libdophot.so

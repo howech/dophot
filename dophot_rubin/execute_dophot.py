@@ -2,6 +2,9 @@
 DoPHOT C library execution wrapper.
 
 Handles calling the compiled DoPHOT C code with generated parameter files.
+
+Current implementation: Subprocess invocation (subprocess.run) via CLI args.
+Alternative (Phase 3): Direct ctypes library calls (see _library_call_example below).
 """
 
 import logging
@@ -243,3 +246,69 @@ def execute_dophot(
         conversion_factor=conversion_factor,
         original_units=original_units,
     )
+
+
+# ============================================================================
+# PHASE 3: Alternative Library-Based Approach (Commented Example)
+# ============================================================================
+# This shows how Phase 3 would replace subprocess invocation with direct
+# library calls via ctypes. No subprocess overhead, no CFITSIO dependency.
+#
+# To enable, uncomment and refactor DoPHOTExecutor.run() to use this approach.
+#
+# def run_via_library(
+#     image: np.ndarray,
+#     params_dict: dict,
+#     output_dir: Path,
+#     conversion_factor: float = 1.0,
+#     original_units: str = "DN",
+# ) -> Table:
+#     """Alternative: Execute DoPHOT via ctypes library call (no subprocess).
+#
+#     This is the Phase 3 implementation that eliminates subprocess overhead
+#     and CFITSIO dependency. It calls DoPHOT C functions directly.
+#     """
+#     import numpy as np
+#     from test_library_wrapper import DoPHOTLibrary, DoPHOTParams
+#
+#     # Load DoPHOT library
+#     lib = DoPHOTLibrary()
+#
+#     # Prepare image and noise arrays (already in memory, no FITS I/O needed)
+#     image_int32 = np.asarray(image, dtype=np.int32)
+#     noise_int32 = np.asarray(params_dict["noise"], dtype=np.int32)
+#
+#     # Create parameters struct
+#     dophot_params = DoPHOTParams(
+#         sigma=params_dict["sigma"],
+#         fwhm=params_dict["fwhm"],
+#         sky_value=params_dict["sky"],
+#         gain=params_dict["gain"],
+#         rdnoise=params_dict["rdnoise"],
+#         saturation=params_dict["saturation"],
+#         nthpix=params_dict["nthpix"],
+#         nfit=params_dict["nfit"],
+#         model=0,  # PGAUSS
+#     )
+#
+#     # Run photometry (no subprocess, data stays in memory)
+#     retcode, results = lib.run(image_int32, noise_int32, dophot_params)
+#
+#     if retcode != 0:
+#         raise RuntimeError(f"DoPHOT failed: {lib._interpret_error_code(retcode)}")
+#
+#     # Convert results to astropy Table
+#     catalog = Table(
+#         {
+#             "x": results["x"],
+#             "y": results["y"],
+#             "mag": results["mag"],
+#             "err": results["err"],
+#         }
+#     )
+#
+#     # Convert magnitudes back to original units
+#     catalog = convert_to_original_units(catalog, conversion_factor, original_units)
+#
+#     return catalog
+# ============================================================================

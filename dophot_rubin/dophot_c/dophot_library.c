@@ -174,19 +174,63 @@ int dophot_photometry(
 
     /* Extract results from global starlist_ structure */
     results->n_stars = n_stars;
+    results->max_stars = NSMAX;
     results->starpar = starlist_.starpar;
     results->shadow = starlist_.shadow;
     results->shaderr = starlist_.shaderr;
     results->imtype = starlist_.IMTYPE;
 
-    /* Allocate result arrays for Python (simplified: just store pointers for now)
-     * In production, would need proper allocation/copying strategy
+    /* Allocate and extract individual result arrays
+     * STARPAR matrix layout (per star):
+     *   starpar[i][0] = x position
+     *   starpar[i][1] = y position
+     *   starpar[i][2] = flux (raw)
+     *   starpar[i][3] = instrumental magnitude
+     *   starpar[i][4+] = additional parameters
      */
-    /* These would be populated from starlist_ in a full implementation */
-    results->x = NULL;     /* To be populated from starpar[*][0] */
-    results->y = NULL;     /* To be populated from starpar[*][1] */
-    results->mag = NULL;   /* To be populated from starpar[*][3] */
-    results->err = NULL;   /* To be computed or extracted */
+
+    if (n_stars > 0) {
+        /* Allocate arrays for result fields */
+        results->x = (float*)malloc(n_stars * sizeof(float));
+        results->y = (float*)malloc(n_stars * sizeof(float));
+        results->mag = (float*)malloc(n_stars * sizeof(float));
+        results->err = (float*)malloc(n_stars * sizeof(float));
+
+        if (!results->x || !results->y || !results->mag || !results->err) {
+            /* Memory allocation failed */
+            if (results->x) free(results->x);
+            if (results->y) free(results->y);
+            if (results->mag) free(results->mag);
+            if (results->err) free(results->err);
+            results->n_stars = 0;
+            return 4;  /* Error: memory allocation failed */
+        }
+
+        /* Extract from STARPAR matrix */
+        for (int i = 0; i < n_stars; i++) {
+            results->x[i] = starlist_.starpar[i][0];      /* X position */
+            results->y[i] = starlist_.starpar[i][1];      /* Y position */
+            results->mag[i] = starlist_.starpar[i][3];    /* Instrumental magnitude */
+
+            /* Error extraction: use shaderr diagonal or compute from covariance
+             * For now, use simplified approach: sqrt of variance estimate
+             * shaderr[i][j] contains error on parameter j
+             */
+            if (starlist_.shaderr && starlist_.shaderr[i]) {
+                /* Use error on magnitude parameter (index 3) */
+                results->err[i] = starlist_.shaderr[i][3];
+            } else {
+                /* Fallback: use generic error estimate */
+                results->err[i] = 0.1f;  /* ~0.1 mag uncertainty */
+            }
+        }
+    } else {
+        /* No stars detected */
+        results->x = NULL;
+        results->y = NULL;
+        results->mag = NULL;
+        results->err = NULL;
+    }
 
     return 0;  /* Success */
 }
