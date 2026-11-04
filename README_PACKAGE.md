@@ -36,6 +36,15 @@ make
 
 The compiled binary will be at `dophot_rubin/dophot_c/working_data/dophot`.
 
+## Running DoPHOT on an image
+
+```bash
+python scripts/run_dophot.py input.fits -o catalog.ecsv
+```
+
+Options: `--workdir DIR` for intermediate files, `--dophot PATH` to use a different executable.
+The catalog is written as ECSV (or FITS if the output name ends in `.fits`).
+
 ## Quick Start
 
 ```python

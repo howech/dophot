@@ -117,19 +117,19 @@ class DoPHOTExecutor:
                 [str(self.config.doPHOTExecPath), str(param_file)],
                 cwd=str(output_dir),
                 stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
-                timeout=60,  # 60 second timeout (DoPHOT should complete in ~5-10s)
+                timeout=1800,
                 check=False,
             )
             elapsed = time.time() - start_time
             self.log.info(f"DoPHOT completed in {elapsed:.1f}s with return code {result.returncode}")
 
-            if result.returncode != 0:
-                self.log.warning(f"DoPHOT exited with return code {result.returncode}")
-                self.log.debug(f"STDOUT: {result.stdout}")
-                self.log.debug(f"STDERR: {result.stderr}")
+            # DoPHOT exits 1 even when it writes a valid catalog, so the output
+            # files, not the exit code, decide success (see _parse_output).
+            self.log.debug(f"DoPHOT return code {result.returncode}")
+            self.log.debug(f"STDOUT: {result.stdout}")
+            self.log.debug(f"STDERR: {result.stderr}")
 
             self.log.debug(f"DoPHOT output:\n{result.stdout}")
 
