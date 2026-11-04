@@ -1,0 +1,11 @@
+include README_PACKAGE.md
+include dophot_rubin/dophot_c/Makefile
+include dophot_rubin/dophot_c/LICENSE
+recursive-include dophot_rubin/dophot_c/headers *.h
+recursive-include dophot_rubin/dophot_c/structs *.h
+recursive-include dophot_rubin/dophot_c *.c
+include dophot_rubin/dophot_c/working_data/param_default_c
+prune dophot_rubin/dophot_c/verif_data
+prune dophot_rubin/dophot_c/manual4.0
+prune dophot_rubin/dophot_c/working_data/build2
+prune dophot_rubin/dophot_c/working_data/dophot
