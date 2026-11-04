@@ -13,71 +13,20 @@
  */
 
 #include "headers/dophot_library.h"
+#include <math.h>
+#include <stdlib.h>
 #include <string.h>
-
-/* Forward declarations of existing DoPHOT functions */
-extern int isearch_(
-    double (*model_func)(short int*, float*, float*, int*, int*),
-    int** image, int** noise, int* nx, int* ny
-);
-
-extern void improve_(
-    double (*model_func)(short int*, float*, float*, int*, int*),
-    int** image, int** noise, int* nx, int* ny
-);
-
-/* Model function pointers */
-extern double pgauss2d_(short int* img, float* par, float* err, int* npar, int* nfit);
-extern double gauss2d_(short int* img, float* par, float* err, int* npar, int* nfit);
-extern double extpgauss2d_(short int* img, float* par, float* err, int* npar, int* nfit);
-
-/* Global state structs (accessed via extern in various .h files) */
-extern struct {
-    float** starpar;
-    int* IMTYPE;
-    float** shadow;
-    float** shaderr;
-    float*** shadcovar;
-} starlist_;
-
-extern struct {
-    int nstot;
-    float thresh;
-} search_;
-
-extern struct {
-    int NFAST;
-    int NSLOW;
-} undergnd_;
-
-extern struct {
-    int npar;
-    int nfit2;
-} tune4_;
-
-extern struct {
-    int lverb;
-} tune14_;
-
-extern struct {
-    char** files;
-    char** flags;
-} tune16_;
-
-extern struct {
-    int nthpix;
-} tune18_;
-
-extern struct {
-    int ufactor;
-} unitize_;
-
-extern struct {
-    float sigma;
-    float beta4;
-    float beta6;
-    float beta8;
-} tune31_;
+#include "logh.h"
+#include "tuneable.h"
+#include "starlist_struct.h"
+#include "search_struct.h"
+#include "undergnd_struct.h"
+#include "unitize_struct.h"
+#include "isearch.h"
+#include "improve.h"
+#include "pgauss.h"
+#include "gauss.h"
+#include "extpgauss.h"
 
 /* Initialize global state from params struct
  * This is a simplified initialization that sets key parameters
@@ -85,10 +34,13 @@ extern struct {
  */
 static void init_from_params(const dophot_params_t* params) {
     /* Set PSF parameters */
-    tune31_.sigma = params->sigma;
-    tune31_.beta4 = 1.0f;  /* Typical Gaussian-like profile */
-    tune31_.beta6 = 0.5f;
-    tune31_.beta8 = 0.0f;
+    float fwhm = params->fwhm > 0.0f ? params->fwhm : 2.3548f * params->sigma;
+    float gwid = (1.2f * fwhm / 2.3548f) * (1.2f * fwhm / 2.3548f);
+    tune1_.gxwid = gwid;
+    tune1_.gywid = gwid;
+    tune17_.beta4 = 1.0f;
+    tune17_.beta6 = 0.5f;
+    tune17_.beta8 = 0.0f;
 
     /* Set threshold */
     if (params->nthpix > 0) {

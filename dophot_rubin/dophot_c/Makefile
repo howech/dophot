@@ -18,8 +18,8 @@ odir = ./
 DOPHflags =  -I${odir}structs -I${odir}headers 
 
 CC= gcc
-#CFLAGS= -g -fno-inline -Wall ${DOPHflags} ${CFIOflags} 
-CFLAGS= -g -fno-inline -fcommon -Wall ${DOPHflags} ${CFIOflags} 
+#CFLAGS= -g -fno-inline -Wall ${DOPHflags} ${CFIOflags}
+CFLAGS= -g -fno-inline -fcommon -fPIC -Wall ${DOPHflags} ${CFIOflags} 
 #CFLAGS= -O2 ${DOPHflags} ${CFIOflags} 
 LIBS= ${CFIOlibs} 
 # optimize with flag: -O2 if things compile and run nicely
@@ -78,8 +78,10 @@ test: $(DoPhotCOBJECTS)
 	     $(CC) $(DoPhotCOBJECTS) \
 	     -o ./verif_data/dophot $(CFLAGS) $(LIBS) -lm
 
-libdophot.so: $(DoPhotCOBJECTS)
-	     $(CC) -shared -fPIC $(DoPhotCOBJECTS) \
+LIBDOPHOT_OBJECTS = $(filter-out $(odir)dophot.o,$(DoPhotCOBJECTS)) $(odir)dophot_library.o
+
+libdophot.so: $(LIBDOPHOT_OBJECTS)
+	     $(CC) -shared -fPIC $(LIBDOPHOT_OBJECTS) \
 	     -o ./libdophot.so $(CFLAGS) $(LIBS) -lm
 
 clean:

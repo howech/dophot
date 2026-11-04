@@ -32,7 +32,7 @@ class TestDoPHOTLibrary:
     @pytest.fixture
     def test_image_path(self) -> Optional[Path]:
         """Get path to test image."""
-        path = Path(__file__).parent.parent / "dophot_c" / "verif_data" / "J0159.8.chip_01.fits"
+        path = Path(__file__).parent / "dophot_c" / "verif_data" / "J0159.8.chip_01.fits"
         return path if path.exists() else None
 
     @pytest.fixture
