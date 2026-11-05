@@ -59,6 +59,37 @@ To install the prebuilt Linux wheel instead, pass its path to pip:
 pip install dist/dophot_rubin-0.1.0-py3-none-manylinux_2_28_x86_64.whl
 ```
 
+### macOS (untested)
+
+There is no macOS wheel yet, so macOS users build from source. This procedure has not been
+tested on a Mac.
+
+```bash
+brew install cfitsio gcc
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Known problems:
+- The Makefile looks for CFITSIO in `/usr/local`. On Apple Silicon, Homebrew installs to
+  `/opt/homebrew`, so the build will fail to find `fitsio.h` and `libcfitsio`.
+- `setup.py` only accepts a static CFITSIO through `CFITSIO_PREFIX`. Dynamic linking against
+  Homebrew's library has no supported setting.
+
+Workaround: build the executable by hand from the project root, then install.
+
+```bash
+cd dophot_rubin/dophot_c
+make dophot CFIOflags="-I$(brew --prefix)/include" LIBS="-L$(brew --prefix)/lib -lcfitsio -lm"
+cd ../..
+pip install -e .
+```
+
+`pip install -e .` runs `make clean` before it rebuilds, so it replaces the hand-built
+executable and may fail with the same CFITSIO path problem. Treat this workaround as
+unverified until it has been run on a Mac.
+
 ## Running DoPHOT on an image
 
 ```bash
