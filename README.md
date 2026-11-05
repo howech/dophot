@@ -5,14 +5,15 @@ This directory is the project root: every relative path in the project documenta
 is relative to it, and all commands below are run from here.
 
 - **Package documentation:** [README_PACKAGE.md](README_PACKAGE.md) (installed with the Python package)
-- **Project status and history:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
+- **Project status and history:** [archive/PROJECT_STATUS.md](archive/PROJECT_STATUS.md) (archived snapshot)
 - **Test data:** [TEST_DATA.md](TEST_DATA.md)
 
 ## Layout
 
 ```
 ./
-├── README.md, README_PACKAGE.md, PROJECT_STATUS.md, TEST_DATA.md
+├── README.md, README_PACKAGE.md, TEST_DATA.md
+├── archive/                                # superseded audits and status documents
 ├── pyproject.toml, setup.py, MANIFEST.in   # packaging (setup.py builds the DoPHOT executable)
 ├── requirements.txt                        # development dependencies
 ├── LICENSE
