@@ -4,9 +4,13 @@ Python wrapper for DoPHOT PSF-based photometry with optional Rubin Observatory p
 
 ## Installation
 
-Commands in this document are run from the project root, `Sahas_CDoPhot/`.
+Commands in this document are run from the project root.
 
-Install from the prebuilt Linux wheel (includes the DoPHOT executable):
+Supported platform: Linux x86_64 (the prebuilt wheel targets manylinux_2_28). macOS and
+Windows are not yet supported.
+
+Install from the prebuilt Linux wheel (includes the DoPHOT executable). The wheel is built
+by `scripts/build_linux_wheel.sh` and written to `dist/`:
 
 ```bash
 pip install dist/dophot_rubin-0.1.0-py3-none-manylinux_2_28_x86_64.whl
@@ -38,9 +42,13 @@ make dophot
 
 Requirements for building from source:
 - C compiler (gcc)
-- CFITSIO library (http://heasarc.gsfc.nasa.gov/fitsio/)
+- CFITSIO library (http://heasarc.gsfc.nasa.gov/fitsio/), with development headers
 
-The compiled binary is at `dophot_rubin/dophot_c/working_data/dophot`.
+To link CFITSIO statically, as the wheel does, set `CFITSIO_PREFIX` to a static CFITSIO
+install (a `lib/libcfitsio.a` and an `include/` directory) before `pip install`.
+
+The compiled binary is at `dophot_rubin/dophot_c/working_data/dophot`. The wheel contains
+the executable with CFITSIO compiled in, so it needs no CFITSIO library at run time.
 
 ## Running DoPHOT on an image
 
@@ -88,7 +96,7 @@ params = generate_parameter_file(
 )
 ```
 
-See `examples/` directory for complete end-to-end examples.
+The `examples/` directory of the source tree has end-to-end examples. It is not included in the wheel.
 
 ## License
 
