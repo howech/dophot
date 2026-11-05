@@ -4,7 +4,15 @@ Python wrapper for DoPHOT PSF-based photometry with optional Rubin Observatory p
 
 ## Installation
 
-Install the Python package via pip:
+Commands in this document are run from the project root, `Sahas_CDoPhot/`.
+
+Install from the prebuilt Linux wheel (includes the DoPHOT executable):
+
+```bash
+pip install dist/dophot_rubin-0.1.0-py3-none-manylinux_2_28_x86_64.whl
+```
+
+Or install from source, which builds the DoPHOT executable first (requires gcc and CFITSIO):
 
 ```bash
 pip install -e .
@@ -20,21 +28,19 @@ pip install -e .
 
 ## Prerequisites
 
-The DoPHOT C executable must be built separately from the C source code in `dophot_rubin/dophot_c/`.
-
-Requirements:
-- C compiler (gcc)
-- CFITSIO library (http://heasarc.gsfc.nasa.gov/fitsio/)
-
-To build:
+The prebuilt Linux wheel needs no compiler. When installing from source, the DoPHOT C
+executable is built from `dophot_rubin/dophot_c/` during `pip install`. To build it by hand:
 
 ```bash
 cd dophot_rubin/dophot_c
-make clean
-make
+make dophot
 ```
 
-The compiled binary will be at `dophot_rubin/dophot_c/working_data/dophot`.
+Requirements for building from source:
+- C compiler (gcc)
+- CFITSIO library (http://heasarc.gsfc.nasa.gov/fitsio/)
+
+The compiled binary is at `dophot_rubin/dophot_c/working_data/dophot`.
 
 ## Running DoPHOT on an image
 
@@ -44,6 +50,7 @@ python scripts/run_dophot.py input.fits -o catalog.ecsv
 
 Options: `--workdir DIR` for intermediate files, `--dophot PATH` to use a different executable.
 The catalog is written as ECSV (or FITS if the output name ends in `.fits`).
+The script is in the source tree under `scripts/`; it is not installed with the wheel.
 
 ## Quick Start
 

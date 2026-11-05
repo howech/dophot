@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-08  
 **Project**: Integrate DoPHOT photometry into Rubin Observatory pipeline  
-**Repository**: Sahas_CDoPhot (this directory)
+**Project root**: `Sahas_CDoPhot/`. All paths in this document are relative to it.
 
 ---
 
@@ -146,50 +146,22 @@ Raw 47 Tucanae Image (reprocessVisitImage output)
 
 ## Current Repository Structure
 
+Paths are relative to the project root, `Sahas_CDoPhot/`. See [README.md](README.md) for the current layout.
+
 ```
 Sahas_CDoPhot/
-├── .git/                           # Git repository
-├── .gitignore                      # Build artifacts ignored
-├── .venv/                          # Python virtual environment
-├── requirements.txt                # Python dependencies
-│
-├── dophot_rubin/dophot_c/               # Official C source (refactored)
-│   ├── dophot_globals.c            # Global definitions
-│   ├── structs/                    # Modified: extern declarations
-│   ├── headers/                    # Modified: extern declarations
-│   ├── Makefile                    # Modified: globals.o first
-│   └── [other C files]
-│
-├── dophot_preprocess/             # Python preprocessing package
-│   ├── __init__.py
-│   ├── psf_measurement.py          # PSF measurement
-│   ├── parameter_generation.py     # Parameter generation
-│   └── param_file_writer.py        # Parameter file output
-│
-├── dophot_rubin/                   # ← NEW: Rubin PipelineTask
-│   ├── __init__.py                 # Package exports
-│   ├── config.py                   # DoPHOTConfig (30+ parameters)
-│   ├── task.py                     # Main PipelineTask + Connections
-│   ├── preprocess_wrapper.py        # PSF measurement orchestration
-│   ├── execute_dophot.py            # C code execution
-│   ├── postprocess.py              # Postprocessing pipeline
-│   ├── pipeline.yaml               # Task registration
-│   ├── tests/                      # Unit tests
-│   │   ├── __init__.py
-│   │   ├── test_config.py          # Config tests (4 tests)
-│   │   ├── test_task.py            # Task tests (9 tests)
-│   │   └── test_preprocessing.py   # Preprocessing tests (8 tests)
-│   └── [other modules]
-│
-├── Expidl/                         # IDL preprocessing (reference)
-├── IDLAstro/                       # IDL astronomy library
-│
-├── GLOBALS_AUDIT.md                # Phase 1a documentation
-├── PHASE_1B_AUDIT.md               # Phase 1b documentation
-├── PHASE_3C_SUMMARY.md             # Phase 3c documentation
-├── TEST_DATA.md                    # Test data reference
-├── PROJECT_STATUS.md               # This file
-└── test_preprocessing.py           # Phase 2d test suite (legacy)
+├── README.md, README_PACKAGE.md, PROJECT_STATUS.md, TEST_DATA.md
+├── pyproject.toml, setup.py, MANIFEST.in
+├── requirements.txt
+├── dophot_rubin/                    # Python package
+│   ├── config.py, execute_dophot.py, preprocess_wrapper.py, psf_measurement.py
+│   ├── image_scaling.py, parse_dophot_output.py, postprocess.py, task.py
+│   ├── tests/                       # pytest suite
+│   └── dophot_c/                    # DoPHOT C source, Makefile, verif_data/
+├── scripts/                         # run_dophot.py, build_linux_wheel.sh
+├── examples/                        # test_e2e.py, verify_pipeline.py, test_scaling.py
+├── Expidl/, IDLAstro/               # IDL reference code
+└── GLOBALS_AUDIT.md                 # C globals audit
 ```
 
 ---
@@ -322,7 +294,7 @@ Output Connections (Butler I/O)
 
 ## Test Data Location
 
-**Testsuite**: `~/projects/astro/Testsuite/`
+**Testsuite**: `../Testsuite/` (outside the project root; see [TEST_DATA.md](TEST_DATA.md))
 
 **Contents**:
 - `47Tuc_wsky_i_2024120600054_4.fits` (187 MB) — Test image 1
@@ -362,21 +334,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Test Preprocessing
+### Test the Pipeline
 
 ```bash
-python test_preprocessing.py
+python examples/test_e2e.py
 ```
 
 ### Import in Python
 
 ```python
-from dophot_preprocess import psf_measurement, parameter_generation
-
-sigma, n, success = psf_measurement.measure_psf_from_image('image.fits')
-params = parameter_generation.compute_dophot_parameters(
-    sigma=sigma, gain=1.0, rdnoise=10.0, sky_value=2286.0
-)
+from dophot_rubin import DoPHOTConfig, DoPHOTExecutor, DoPHOTPreprocessor
 ```
 
 ---

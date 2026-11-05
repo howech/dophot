@@ -1,6 +1,6 @@
 # DoPHOT Test Data
 
-**Location**: `~/projects/astro/Testsuite/`
+**Location**: `../Testsuite/` relative to the project root (`Sahas_CDoPhot/`), i.e. a sibling directory of the project. Not part of the repository.
 
 **Size**: ~374 MB (2× 187 MB FITS files + verification outputs)
 
