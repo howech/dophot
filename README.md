@@ -1,8 +1,8 @@
-# Sahas_CDoPhot
+# DoPHOT Rubin Integration
 
-Project root for the DoPHOT PSF photometry integration. This directory (`Sahas_CDoPhot/`)
-is the root of the project: every relative path in the project documentation is relative to it.
-Run all commands below from this directory.
+PSF photometry with DoPHOT, integrated with the Rubin Observatory pipeline.
+This directory is the project root: every relative path in the project documentation
+is relative to it, and all commands below are run from here.
 
 - **Package documentation:** [README_PACKAGE.md](README_PACKAGE.md) (installed with the Python package)
 - **Project status and history:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
@@ -11,7 +11,7 @@ Run all commands below from this directory.
 ## Layout
 
 ```
-Sahas_CDoPhot/
+./
 ├── README.md, README_PACKAGE.md, PROJECT_STATUS.md, TEST_DATA.md
 ├── pyproject.toml, setup.py, MANIFEST.in   # packaging (setup.py builds the DoPHOT executable)
 ├── requirements.txt                        # development dependencies
