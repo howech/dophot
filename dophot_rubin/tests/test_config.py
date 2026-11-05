@@ -24,7 +24,7 @@ class TestDoPHOTConfig(unittest.TestCase):
         self.assertEqual(config.psfEdgeBuffer, 32)
 
         # DoPHOT execution defaults
-        self.assertEqual(config.doPHOTExecPath, "dophot")
+        self.assertTrue(config.doPHOTExecPath.endswith("dophot"))
         self.assertTrue(config.useEmpiricalModel)
         self.assertEqual(config.psfModel, "PGAUSS")
 

@@ -22,10 +22,10 @@ from dophot_rubin.execute_dophot import DoPHOTExecutor
 from dophot_rubin.parse_dophot_output import parse_obj_out
 
 # Paths
-REPO_ROOT = Path(__file__).parent.parent.parent
-TEST_IMAGE = REPO_ROOT / "dophot_c/verif_data/J0159.8.chip_01.fits"
-REFERENCE_CATALOG = REPO_ROOT / "dophot_c/verif_data/compare_out/obj_out_J0159.8.chip_01"
-DOPHOT_EXE = REPO_ROOT / "dophot_c/working_data/dophot"
+PACKAGE_DIR = Path(__file__).parent.parent
+TEST_IMAGE = PACKAGE_DIR / "dophot_c/verif_data/J0159.8.chip_01.fits"
+REFERENCE_CATALOG = PACKAGE_DIR / "dophot_c/verif_data/compare_out/obj_out_J0159.8.chip_01"
+DOPHOT_EXE = PACKAGE_DIR / "dophot_c/working_data/dophot"
 
 
 @pytest.fixture

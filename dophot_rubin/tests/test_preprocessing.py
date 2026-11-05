@@ -8,6 +8,7 @@ import numpy as np
 
 from dophot_rubin.config import DoPHOTConfig
 from dophot_rubin.preprocess_wrapper import DoPHOTPreprocessor
+from dophot_rubin.psf_measurement import measure_psf_simple
 
 
 class TestDoPHOTPreprocessor(unittest.TestCase):
@@ -30,30 +31,25 @@ class TestDoPHOTPreprocessor(unittest.TestCase):
 
     def test_image_stats_extraction_no_header(self):
         """Test image statistics extraction without header."""
-        # Create synthetic image
         image = np.random.normal(1000, 100, (100, 100))
 
         stats = self.preprocessor._extract_image_stats(header=None, image=image)
 
-        self.assertIn('sky_value', stats)
-        self.assertIn('sky_rms', stats)
-        self.assertIn('gain', stats)
-        self.assertIn('saturation', stats)
-        self.assertIn('rdnoise', stats)
-
-        # Check types
-        self.assertIsInstance(stats['sky_value'], float)
-        self.assertIsInstance(stats['gain'], float)
+        self.assertEqual(
+            set(stats._fields),
+            {'sky_value', 'sky_rms', 'gain', 'rdnoise', 'saturation'},
+        )
+        self.assertIsInstance(stats.sky_value, float)
+        self.assertIsInstance(stats.gain, float)
 
     def test_image_stats_extraction_with_defaults(self):
         """Test that default values are used when header is None."""
         image = np.random.normal(1000, 100, (50, 50))
         stats = self.preprocessor._extract_image_stats(header=None, image=image)
 
-        # Verify default values
-        self.assertEqual(stats['gain'], 1.0)
-        self.assertEqual(stats['saturation'], 60000)
-        self.assertEqual(stats['rdnoise'], 10.0)
+        self.assertEqual(stats.gain, 1.0)
+        self.assertEqual(stats.saturation, 60000)
+        self.assertEqual(stats.rdnoise, 10.0)
 
     def test_image_stats_with_dict_header(self):
         """Test image statistics extraction with dictionary header."""
@@ -66,49 +62,26 @@ class TestDoPHOTPreprocessor(unittest.TestCase):
 
         stats = self.preprocessor._extract_image_stats(header=header, image=image)
 
-        self.assertEqual(stats['gain'], 2.0)
-        self.assertEqual(stats['saturation'], 50000)
-        self.assertEqual(stats['rdnoise'], 8.0)
+        self.assertEqual(stats.gain, 2.0)
+        self.assertEqual(stats.saturation, 50000)
+        self.assertEqual(stats.rdnoise, 8.0)
 
     def test_psf_measurement_empty_image(self):
-        """Test PSF measurement on empty image."""
-        # Create uniform image (no stars)
+        """A uniform image has no stars, so the PSF falls back to defaults."""
         image = np.ones((100, 100)) * 1000.0
 
-        stats = {
-            'sky_value': 1000,
-            'sky_rms': 10,
-            'gain': 1.0,
-            'saturation': 60000,
-            'rdnoise': 10.0
-        }
+        sigma, _, _, _ = measure_psf_simple(image)
 
-        _, n_stars, success = self.preprocessor._measure_psf(image, stats)
-
-        # Should fail due to no stars detected
-        self.assertFalse(success)
-        self.assertEqual(n_stars, 0)
+        self.assertEqual(sigma, 2.5)
 
     def test_psf_measurement_needs_stars(self):
-        """Test that PSF measurement requires minimum stars."""
-        # Create image with very few stars
+        """A single bright pixel is not enough to measure a PSF."""
         image = np.ones((100, 100)) * 1000.0
-        # Add one very bright pixel
         image[50, 50] = 5000.0
 
-        stats = {
-            'sky_value': 1000,
-            'sky_rms': 10,
-            'gain': 1.0,
-            'saturation': 60000,
-            'rdnoise': 10.0
-        }
+        sigma, _, _, _ = measure_psf_simple(image)
 
-        _, n_stars, success = self.preprocessor._measure_psf(image, stats)
-
-        # Should fail if fewer than psfMinStars
-        if n_stars < self.config.psfMinStars:
-            self.assertFalse(success)
+        self.assertEqual(sigma, 2.5)
 
 
 class TestPreprocessingContext(unittest.TestCase):

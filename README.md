@@ -71,9 +71,7 @@ pytest dophot_rubin/tests
 python examples/test_e2e.py     # end-to-end run on the verification image
 ```
 
-Known issue: 6 of the 24 unit tests in `dophot_rubin/tests/` currently fail. They are stale
-(they check older defaults and removed methods such as `_measure_psf`), not failures of the
-photometry pipeline. `examples/test_e2e.py` is the reliable end-to-end check.
+Known issue: `test_full_pipeline` fails. The pipeline detects 316 objects on the verification image, while the reference catalog in `dophot_c/verif_data/compare_out/` lists 1124 (379 of them type 1, against 81 detected). The cause is not yet investigated; the test is the check for this gap and is left failing on purpose.
 
 `test_e2e.py` and the reference-comparison tests use the verification image in
 `dophot_rubin/dophot_c/verif_data/`. The 47 Tucanae test data lives outside the project
